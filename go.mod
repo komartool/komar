@@ -1,4 +1,4 @@
-module komar
+module github.com/mxprshn/komar
 
 go 1.23.5
 

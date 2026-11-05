@@ -2,9 +2,10 @@ package celcheck
 
 import (
 	"fmt"
-	"komar/internal/spec"
 	"regexp"
 	"strings"
+
+	"github.com/mxprshn/komar/internal/spec"
 
 	"cel.dev/cel-go/cel"
 )

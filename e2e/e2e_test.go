@@ -1,9 +1,10 @@
 package e2e
 
 import (
-	"komar/internal/cli"
 	"os"
 	"testing"
+
+	"github.com/mxprshn/komar/internal/cli"
 
 	"github.com/rogpeppe/go-internal/testscript"
 )

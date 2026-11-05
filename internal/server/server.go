@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"komar/internal/writer"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/mxprshn/komar/internal/writer"
 )
 
 const (

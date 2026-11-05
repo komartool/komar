@@ -1,6 +1,10 @@
 .DS_Store
 .tasks/
 /bin/
+/.claude/
+/assets/
+/output/
+/initial-prompt.md
 .gradle/
 build/
 /internal/runtime/jvm/komar-agent.jar

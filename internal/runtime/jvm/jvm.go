@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"komar/internal/spec"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/mxprshn/komar/internal/spec"
 
 	_ "embed"
 )

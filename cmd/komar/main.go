@@ -1,8 +1,9 @@
 package main
 
 import (
-	"komar/internal/cli"
 	"os"
+
+	"github.com/mxprshn/komar/internal/cli"
 )
 
 func main() {

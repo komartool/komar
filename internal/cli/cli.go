@@ -4,17 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"komar/internal/celcheck"
-	"komar/internal/launch"
-	"komar/internal/runtime/jvm"
-	"komar/internal/server"
-	"komar/internal/spec"
-	"komar/internal/writer"
 	"os"
 	"os/signal"
 	"sort"
 	"syscall"
 	"time"
+
+	"github.com/mxprshn/komar/internal/celcheck"
+	"github.com/mxprshn/komar/internal/launch"
+	"github.com/mxprshn/komar/internal/runtime/jvm"
+	"github.com/mxprshn/komar/internal/server"
+	"github.com/mxprshn/komar/internal/spec"
+	"github.com/mxprshn/komar/internal/writer"
 )
 
 const (
