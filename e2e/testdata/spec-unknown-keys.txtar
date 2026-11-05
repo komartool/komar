@@ -1,0 +1,23 @@
+# all spec errors are reported at once with suggestions; nothing starts and -o is untouched
+cp previous.jsonl out.jsonl
+exec-status 2 komar run spec.yaml -o out.jsonl -- java -version
+cmp stderr expected.stderr
+cmp out.jsonl previous.jsonl
+
+-- spec.yaml --
+prbes: []
+probes:
+  - id: a
+    wher: { class: Main }
+  - id: a
+    where: { class: Main }
+  - where: { class: Main }
+-- previous.jsonl --
+{"kind":"run"}
+-- expected.stderr --
+komar: spec.yaml:1:1: unknown key "prbes" (did you mean "probes"?)
+komar: spec.yaml:4:5: unknown key "wher" in probe (did you mean "where"?)
+komar: spec.yaml:3:5: probe "a" has no "where"
+komar: spec.yaml:5:5: duplicate probe id "a"
+komar: spec.yaml:7:5: probe has no "id"
+komar: 5 errors, nothing started

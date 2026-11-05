@@ -1,0 +1,29 @@
+# every JVM in the launched process tree loads the agent and reports to one file
+exec javac --release 8 -Xlint:-options -d classes Parent.java Child.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Parent
+stdout '^child done$'
+jsonl-cmp out.jsonl expected.jsonl
+
+-- Parent.java --
+public class Parent {
+    public static void main(String[] args) throws Exception {
+        String java = System.getProperty("java.home") + "/bin/java";
+        Process p = new ProcessBuilder(java, "-cp", "classes", "Child").inheritIO().start();
+        System.exit(p.waitFor());
+    }
+}
+-- Child.java --
+public class Child {
+    public static void main(String[] args) {
+        System.out.println("child done");
+    }
+}
+-- spec.yaml --
+probes:
+  - id: main
+    where: { class: Child, method: main }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Parent"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","pid":1,"jvm":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","pid":2,"jvm":"<masked>"}
+{"kind":"end","reason":"exit","code":0,"hits":{},"when_errors":{}}

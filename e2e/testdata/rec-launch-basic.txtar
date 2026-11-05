@@ -1,0 +1,22 @@
+# launch writes run, agent diag and end; program exit code goes into end, komar exits 0
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+stdout '^hello from main$'
+stderr 'komar: program exited with code 3'
+jsonl-cmp out.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("hello from main");
+        System.exit(3);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: main
+    where: { class: Main, method: main }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","pid":1,"jvm":"<masked>"}
+{"kind":"end","reason":"exit","code":3,"hits":{},"when_errors":{}}

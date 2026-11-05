@@ -1,0 +1,10 @@
+# usage errors exit 2 with a usage line
+exec-status 2 komar
+stderr 'expected command "run"'
+stderr '^usage: komar run'
+
+exec-status 2 komar run spec.yaml -- java
+stderr 'missing -o'
+
+exec-status 2 komar run spec.yaml -o out.jsonl
+stderr 'missing program after --'

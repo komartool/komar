@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-allowed='^\s*//(go:|nolint|\s*\+build)'
+allowed='[[:space:]]*//(go:|nolint|[[:space:]]*\+build)'
 
 found=$(git ls-files --cached --others --exclude-standard -- '*.go' '*.java' '*.kts' \
   | while read -r f; do [ -f "$f" ] && echo "$f"; done \

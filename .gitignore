@@ -3,3 +3,4 @@
 /bin/
 .gradle/
 build/
+/internal/runtime/jvm/komar-agent.jar

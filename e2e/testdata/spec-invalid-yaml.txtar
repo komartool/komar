@@ -1,0 +1,13 @@
+# a spec that is not valid YAML or lacks probes is rejected before launch
+exec-status 2 komar run bad.yaml -o out.jsonl -- java -version
+stderr '^komar: bad.yaml:1:1: '
+stderr 'nothing started'
+! exists out.jsonl
+
+exec-status 2 komar run empty.yaml -o out.jsonl -- java -version
+stderr 'komar: empty.yaml:1:1: missing required key "probes"'
+
+-- bad.yaml --
+probes: [
+-- empty.yaml --
+version: 1

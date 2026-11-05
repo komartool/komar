@@ -45,6 +45,16 @@ checkstyle {
     maxWarnings = 0
 }
 
+tasks.jar {
+    archiveFileName = "komar-agent.jar"
+    manifest {
+        attributes(
+            "Premain-Class" to "dev.komar.agent.Agent",
+            "Can-Retransform-Classes" to "true",
+        )
+    }
+}
+
 tasks.named("checkstyleTest") {
     enabled = false
 }
