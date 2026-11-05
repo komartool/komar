@@ -5,6 +5,7 @@ plugins {
     java
     checkstyle
     id("net.ltgt.errorprone") version "5.2.0"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 repositories {
@@ -18,6 +19,8 @@ java {
 }
 
 dependencies {
+    implementation("net.bytebuddy:byte-buddy:1.18.17")
+    compileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
     errorprone("com.google.errorprone:error_prone_core:2.52.0")
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -45,12 +48,15 @@ checkstyle {
     maxWarnings = 0
 }
 
-tasks.jar {
+tasks.shadowJar {
     archiveFileName = "komar-agent.jar"
+    relocate("net.bytebuddy", "dev.komar.shaded.bytebuddy")
+    exclude("META-INF/maven/**", "META-INF/LICENSE*", "META-INF/NOTICE*", "module-info.class", "META-INF/versions/*/module-info.class")
     manifest {
         attributes(
             "Premain-Class" to "dev.komar.agent.Agent",
             "Can-Retransform-Classes" to "true",
+            "Multi-Release" to "true",
         )
     }
 }

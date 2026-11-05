@@ -1,0 +1,75 @@
+# exception from an unprobed callee exits M exceptionally; caught inside M is a normal exit; wrapped exceptions keep their cause; checked and Error types are recorded
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec java -cp classes Main
+cp stdout base.txt
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+cmp stdout base.txt
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+import java.io.IOException;
+
+public class Main {
+    static void deep() throws IOException {
+        throw new IOException("disk gone");
+    }
+
+    static void tFromCallee() throws IOException {
+        deep();
+    }
+
+    static String tCaughtInside() {
+        try {
+            deep();
+            return "no";
+        } catch (IOException e) {
+            return "recovered";
+        }
+    }
+
+    static void tWrapped() {
+        try {
+            deep();
+        } catch (IOException e) {
+            throw new RuntimeException("wrapped", e);
+        }
+    }
+
+    static void tError() {
+        throw new AssertionError("bad state");
+    }
+
+    public static void main(String[] args) {
+        try {
+            tFromCallee();
+        } catch (IOException e) {
+            System.out.println("1 " + e.getMessage());
+        }
+        System.out.println("2 " + tCaughtInside());
+        try {
+            tWrapped();
+        } catch (RuntimeException e) {
+            System.out.println("3 " + e.getCause().getMessage());
+        }
+        try {
+            tError();
+        } catch (AssertionError e) {
+            System.out.println("4 " + e.getMessage());
+        }
+    }
+}
+-- spec.yaml --
+probes:
+  - id: m
+    where: { class: Main, method: 't*', at: [exit, exception] }
+    what: [ret, exception]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"m","msg":"placed","class":"Main","methods":4,"pid":1}
+{"kind":"hit","probe":"m","point":"exception","method":"Main.tFromCallee()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"exception":{"@type":"java.io.IOException","message":"disk gone"}}}
+{"kind":"hit","probe":"m","point":"exit","method":"Main.tCaughtInside()","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"recovered"}}
+{"kind":"hit","probe":"m","point":"exception","method":"Main.tWrapped()","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"exception":{"@type":"java.lang.RuntimeException","message":"wrapped","cause":{"@type":"java.io.IOException","message":"disk gone"}}}}
+{"kind":"hit","probe":"m","point":"exception","method":"Main.tError()","call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"exception":{"@type":"java.lang.AssertionError","message":"bad state"}}}
+{"kind":"end","reason":"exit","code":0,"hits":{"m":4},"dropped":0,"when_errors":{}}

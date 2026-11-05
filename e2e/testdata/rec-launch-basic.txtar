@@ -3,7 +3,8 @@ exec javac --release 8 -Xlint:-options -d classes Main.java
 exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
 stdout '^hello from main$'
 stderr 'komar: program exited with code 3'
-jsonl-cmp out.jsonl expected.jsonl
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
 
 -- Main.java --
 public class Main {
@@ -18,5 +19,7 @@ probes:
     where: { class: Main, method: main }
 -- expected.jsonl --
 {"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
-{"kind":"diag","level":"info","msg":"agent started","pid":1,"jvm":"<masked>"}
-{"kind":"end","reason":"exit","code":3,"hits":{},"when_errors":{}}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"main","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"main","point":"entry","method":"Main.main(String[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"end","reason":"exit","code":3,"hits":{"main":1},"dropped":0,"when_errors":{}}

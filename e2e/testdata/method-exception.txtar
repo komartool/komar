@@ -1,0 +1,38 @@
+# an exceptional exit writes point exception with the exception; the program catches the same exception object
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec java -cp classes Main
+cp stdout base.txt
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+cmp stdout base.txt
+jsonl-norm -duration duration out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static IllegalStateException last;
+
+    static void fail(String why) {
+        last = new IllegalStateException(why);
+        throw last;
+    }
+
+    public static void main(String[] args) {
+        try {
+            fail("boom");
+        } catch (IllegalStateException e) {
+            System.out.println("same object: " + (e == last));
+        }
+    }
+}
+-- spec.yaml --
+probes:
+  - id: fail
+    where: { class: Main, method: fail }
+    what: [args, ret, exception, duration]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"fail","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"fail","point":"entry","method":"Main.fail(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":["boom"]}}
+{"kind":"hit","probe":"fail","point":"exception","method":"Main.fail(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":["boom"],"exception":{"@type":"java.lang.IllegalStateException","message":"boom"},"duration":"<duration>"}}
+{"kind":"end","reason":"exit","code":0,"hits":{"fail":2},"dropped":0,"when_errors":{}}

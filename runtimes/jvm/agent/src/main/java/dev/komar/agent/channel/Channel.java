@@ -70,6 +70,7 @@ public final class Channel {
                     write(record);
                 }
             }
+            write("{\"kind\":\"stats\",\"dropped\":" + dropped.get() + "}");
             writer.flush();
         } catch (IOException e) {
             closing = true;

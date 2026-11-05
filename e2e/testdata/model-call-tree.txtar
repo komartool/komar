@@ -1,0 +1,60 @@
+# parent is the nearest probed call on the same thread, unprobed methods are skipped, recursion nests, each thread starts its own tree
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static void handle() {
+        load();
+        query("b");
+    }
+
+    static void load() {
+        query("a");
+    }
+
+    static void query(String q) {
+    }
+
+    static int fact(int n) {
+        return n <= 1 ? 1 : n * fact(n - 1);
+    }
+
+    public static void main(String[] args) throws Exception {
+        handle();
+        fact(3);
+        Thread worker = new Thread(Main::handle, "worker");
+        worker.start();
+        worker.join();
+    }
+}
+-- spec.yaml --
+probes:
+  - id: handle
+    where: { class: Main, method: handle, at: [entry, exit] }
+  - id: query
+    where: { class: Main, method: query, at: [entry] }
+    what: [args]
+  - id: fact
+    where: { class: Main, method: fact, at: [exit] }
+    what: [args, ret]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"handle","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"query","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"fact","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"handle","point":"entry","method":"Main.handle()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"query","point":"entry","method":"Main.query(String)","call":2,"parent":1,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":["a"]}}
+{"kind":"hit","probe":"query","point":"entry","method":"Main.query(String)","call":3,"parent":1,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":["b"]}}
+{"kind":"hit","probe":"handle","point":"exit","method":"Main.handle()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"fact","point":"exit","method":"Main.fact(int)","call":4,"parent":5,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[1],"ret":1}}
+{"kind":"hit","probe":"fact","point":"exit","method":"Main.fact(int)","call":5,"parent":6,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[2],"ret":2}}
+{"kind":"hit","probe":"fact","point":"exit","method":"Main.fact(int)","call":6,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[3],"ret":6}}
+{"kind":"hit","probe":"handle","point":"entry","method":"Main.handle()","call":7,"parent":null,"thread":{"id":2,"name":"worker"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"query","point":"entry","method":"Main.query(String)","call":8,"parent":7,"thread":{"id":2,"name":"worker"},"pid":1,"ts":"<masked>","what":{"args":["a"]}}
+{"kind":"hit","probe":"query","point":"entry","method":"Main.query(String)","call":9,"parent":7,"thread":{"id":2,"name":"worker"},"pid":1,"ts":"<masked>","what":{"args":["b"]}}
+{"kind":"hit","probe":"handle","point":"exit","method":"Main.handle()","call":7,"parent":null,"thread":{"id":2,"name":"worker"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"end","reason":"exit","code":0,"hits":{"fact":3,"handle":4,"query":4},"dropped":0,"when_errors":{}}

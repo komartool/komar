@@ -17,7 +17,7 @@ build: $(AGENT_JAR)
 agent: $(AGENT_JAR)
 
 $(AGENT_JAR): $(AGENT_SOURCES)
-	cd $(AGENT) && ./gradlew --quiet jar
+	cd $(AGENT) && ./gradlew --quiet shadowJar
 	cp $(AGENT)/build/libs/komar-agent.jar $@
 
 check: lint test

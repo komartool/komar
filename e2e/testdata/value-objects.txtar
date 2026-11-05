@@ -1,0 +1,76 @@
+# values come from fields, private and inherited ones included; getters and toString never run; JDK values render as plain JSON
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec java -cp classes Main
+cp stdout base.txt
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+cmp stdout base.txt
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Main {
+    enum Status { NEW, PAID }
+
+    static class Entity {
+        private long id = 42;
+    }
+
+    static class Order extends Entity {
+        private double total = 99.5;
+        private String password = "hunter2";
+        private Status status = Status.PAID;
+        private Object nothing = null;
+        private char grade = 'A';
+        private boolean vip = true;
+        private long big = 9007199254740993L;
+        private BigDecimal price = new BigDecimal("12345678901234567890.01");
+        private LocalDate day = LocalDate.of(2026, 1, 2);
+        private int[] codes = {1, 2};
+        private List<String> tags = new ArrayList<>(Arrays.asList("x", "y"));
+        private Map<String, Integer> qty = new LinkedHashMap<>();
+        private Map<Integer, String> byId = new LinkedHashMap<>();
+
+        Order() {
+            qty.put("a", 1);
+            byId.put(1, "one");
+        }
+
+        public double getTotal() {
+            System.out.println("getter ran");
+            return total;
+        }
+
+        @Override
+        public String toString() {
+            System.out.println("toString ran");
+            return "Order";
+        }
+    }
+
+    static void take(Order o) {
+    }
+
+    public static void main(String[] args) {
+        take(new Order());
+        System.out.println("done");
+    }
+}
+-- spec.yaml --
+probes:
+  - id: take
+    where: { class: Main, method: take, at: [entry] }
+    what: [args]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"take","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"take","point":"entry","method":"Main.take(Order)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[{"@type":"Main$Order","id":42,"total":99.5,"password":"hunter2","status":"PAID","nothing":null,"grade":"A","vip":true,"big":"9007199254740993","price":"12345678901234567890.01","day":"2026-01-02","codes":[1,2],"tags":["x","y"],"qty":{"a":1},"byId":{"1":"one"}}]}}
+{"kind":"end","reason":"exit","code":0,"hits":{"take":1},"dropped":0,"when_errors":{}}

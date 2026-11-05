@@ -2,7 +2,8 @@
 exec javac --release 8 -Xlint:-options -d classes Parent.java Child.java
 exec komar run spec.yaml -o out.jsonl -- java -cp classes Parent
 stdout '^child done$'
-jsonl-cmp out.jsonl expected.jsonl
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
 
 -- Parent.java --
 public class Parent {
@@ -24,6 +25,10 @@ probes:
     where: { class: Child, method: main }
 -- expected.jsonl --
 {"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Parent"],"start":"<masked>"}
-{"kind":"diag","level":"info","msg":"agent started","pid":1,"jvm":"<masked>"}
-{"kind":"diag","level":"info","msg":"agent started","pid":2,"jvm":"<masked>"}
-{"kind":"end","reason":"exit","code":0,"hits":{},"when_errors":{}}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":2}
+{"kind":"diag","level":"info","probe":"main","msg":"placed","class":"Child","methods":1,"pid":2}
+{"kind":"hit","probe":"main","point":"entry","method":"Child.main(String[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":2,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"main","point":"exit","method":"Child.main(String[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":2,"ts":"<masked>","what":{}}
+{"kind":"diag","level":"error","probe":"main","msg":"no class matched Child (none was loaded during the run)","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"main":2},"dropped":0,"when_errors":{}}

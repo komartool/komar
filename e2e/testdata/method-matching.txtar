@@ -1,0 +1,80 @@
+# exact class names, wildcards, binary names of nested classes, static and private methods
+exec javac --release 8 -Xlint:-options -d classes Main.java shop/OrderService.java shop/UserService.java shop/Repo.java other/Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static class Inner {
+        int twice(int x) {
+            return x * 2;
+        }
+    }
+
+    private static int secret(int x) {
+        return x + 1;
+    }
+
+    public static void main(String[] args) {
+        new shop.OrderService().run();
+        new shop.UserService().run();
+        new shop.Repo().run();
+        new other.Main().run();
+        new Inner().twice(4);
+        secret(1);
+    }
+}
+-- shop/OrderService.java --
+package shop;
+
+public class OrderService {
+    public void run() {
+    }
+}
+-- shop/UserService.java --
+package shop;
+
+public class UserService {
+    public void run() {
+    }
+}
+-- shop/Repo.java --
+package shop;
+
+public class Repo {
+    public void run() {
+    }
+}
+-- other/Main.java --
+package other;
+
+public class Main {
+    public void run() {
+    }
+}
+-- spec.yaml --
+probes:
+  - id: services
+    where: { class: 'shop.*Service', method: run, at: [entry] }
+  - id: exact
+    where: { class: Main, method: secret, at: [exit] }
+    what: [ret]
+  - id: other_not_matched
+    where: { class: Main, method: run, at: [entry] }
+  - id: nested
+    where: { class: 'Main$Inner', method: twice, at: [exit] }
+    what: [ret]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"exact","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"services","msg":"placed","class":"shop.OrderService","methods":1,"pid":1}
+{"kind":"hit","probe":"services","point":"entry","method":"shop.OrderService.run()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"diag","level":"info","probe":"services","msg":"placed","class":"shop.UserService","methods":1,"pid":1}
+{"kind":"hit","probe":"services","point":"entry","method":"shop.UserService.run()","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"diag","level":"info","probe":"nested","msg":"placed","class":"Main$Inner","methods":1,"pid":1}
+{"kind":"hit","probe":"nested","point":"exit","method":"Main$Inner.twice(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":8}}
+{"kind":"hit","probe":"exact","point":"exit","method":"Main.secret(int)","call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
+{"kind":"diag","level":"error","probe":"other_not_matched","msg":"no method run matched in Main","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"exact":1,"nested":1,"services":2},"dropped":0,"when_errors":{}}

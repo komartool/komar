@@ -16,9 +16,10 @@ func TestMain(m *testing.M) {
 
 func TestScript(t *testing.T) {
 	testscript.Run(t, testscript.Params{
-		Dir: "testdata",
+		Dir:           "testdata",
+		UpdateScripts: os.Getenv("KOMAR_E2E_UPDATE") == "1",
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"jsonl-cmp":   cmdJSONLCmp,
+			"jsonl-norm":  cmdJSONLNorm,
 			"exec-status": cmdExecStatus,
 		},
 		Setup: func(env *testscript.Env) error {

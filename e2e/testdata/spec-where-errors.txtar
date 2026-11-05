@@ -1,0 +1,30 @@
+# where, at, what and limits mistakes are reported together before anything starts
+exec-status 2 komar run spec.yaml -o out.jsonl -- java -version
+cmp stderr expected.stderr
+! exists out.jsonl
+
+-- spec.yaml --
+limits: { hits: 5 }
+probes:
+  - id: a
+    where: { class: Main, method: run, at: [entry, exitt] }
+    what: [ret, rett, { total: args }, { total: ret }]
+  - id: b
+    where: { class: Main, method: new, at: [exception] }
+  - id: c
+    where: { clas: Main }
+  - id: d
+    where: { class: Main, method: run, at: [] }
+    limits: { depth: zero }
+-- expected.stderr --
+komar: spec.yaml:1:11: unknown limit "hits": "hits" belongs in "stop"; the per-probe cap is "max_hits"
+komar: spec.yaml:4:52: probe "a": unknown point "exitt"; allowed: [entry exit exception] (did you mean "exit"?)
+komar: spec.yaml:5:17: probe "a": what "rett": only [args this ret exception duration] are implemented yet (did you mean "ret"?)
+komar: spec.yaml:5:40: probe "a": duplicate what key "total"
+komar: spec.yaml:7:45: probe "b": "exception" on constructors is not implemented yet
+komar: spec.yaml:9:14: unknown key "clas" in where (did you mean "class"?)
+komar: spec.yaml:9:12: probe "c": where has no "class"
+komar: spec.yaml:9:12: probe "c": where has no "method"
+komar: spec.yaml:12:22: limit "depth" must be a positive integer
+komar: spec.yaml:11:44: probe "d": "at" is empty
+komar: 10 errors, nothing started

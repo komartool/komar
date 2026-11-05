@@ -1,0 +1,67 @@
+# subtypes: true matches implementations (also one loaded late) and overriding subclasses; an interface without subtypes matches nothing and says why
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    interface Gateway {
+        String send(String msg);
+    }
+
+    static class Stripe implements Gateway {
+        public String send(String msg) {
+            return "stripe:" + msg;
+        }
+    }
+
+    static class Paypal implements Gateway {
+        public String send(String msg) {
+            return "paypal:" + msg;
+        }
+    }
+
+    static class Base {
+        int size() {
+            return 1;
+        }
+    }
+
+    static class Sub extends Base {
+        @Override
+        int size() {
+            return 2;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Gateway g = new Stripe();
+        g.send("a");
+        Gateway late = (Gateway) Class.forName("Main$Paypal").getDeclaredConstructor().newInstance();
+        late.send("b");
+        new Sub().size();
+    }
+}
+-- spec.yaml --
+probes:
+  - id: gateways
+    where: { class: 'Main$Gateway', subtypes: true, method: send, at: [exit] }
+    what: [ret]
+  - id: sizes
+    where: { class: 'Main$Base', subtypes: true, method: size, at: [exit] }
+    what: [ret]
+  - id: interface_only
+    where: { class: 'Main$Gateway', method: send, at: [entry] }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"gateways","msg":"placed","class":"Main$Stripe","methods":1,"pid":1}
+{"kind":"hit","probe":"gateways","point":"exit","method":"Main$Stripe.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe:a"}}
+{"kind":"diag","level":"info","probe":"gateways","msg":"placed","class":"Main$Paypal","methods":1,"pid":1}
+{"kind":"hit","probe":"gateways","point":"exit","method":"Main$Paypal.send(String)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"paypal:b"}}
+{"kind":"diag","level":"info","probe":"sizes","msg":"placed","class":"Main$Sub","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"sizes","msg":"placed","class":"Main$Base","methods":1,"pid":1}
+{"kind":"hit","probe":"sizes","point":"exit","method":"Main$Sub.size()","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
+{"kind":"diag","level":"error","probe":"interface_only","msg":"no method send matched in Main$Gateway; Main$Gateway is an interface or abstract class, use subtypes: true to probe implementations","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"gateways":2,"sizes":1},"dropped":0,"when_errors":{}}

@@ -43,6 +43,8 @@ deps:
     mayDependOn: [spec]
   server:
     mayDependOn: [writer]
+  runtime-jvm:
+    mayDependOn: [spec]
   e2e:
     mayDependOn: [cli]
     canUse: [testscript]

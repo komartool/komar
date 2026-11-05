@@ -1,0 +1,35 @@
+# at: [exit] writes only normal exits; a throwing call writes nothing
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static int check(int x) {
+        if (x < 0) {
+            throw new IllegalArgumentException("negative");
+        }
+        return x * 2;
+    }
+
+    public static void main(String[] args) {
+        check(5);
+        try {
+            check(-1);
+        } catch (IllegalArgumentException e) {
+            System.out.println("caught");
+        }
+    }
+}
+-- spec.yaml --
+probes:
+  - id: check
+    where: { class: Main, method: check, at: [exit] }
+    what: [args, ret]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"check","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"check","point":"exit","method":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[5],"ret":10}}
+{"kind":"end","reason":"exit","code":0,"hits":{"check":1},"dropped":0,"when_errors":{}}

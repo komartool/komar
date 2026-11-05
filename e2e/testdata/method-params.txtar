@@ -1,0 +1,131 @@
+# params select overloads: none = all, qualified, simple names, ambiguous simple names, empty, primitive vs boxed, arrays, generics, varargs, type variables, no match
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+import java.util.Collections;
+import java.util.List;
+
+public class Main {
+    static class Box<K> {
+        void put(K key) {
+        }
+
+        void put(K key, int n) {
+        }
+    }
+
+    static void send() {
+    }
+
+    static void send(String s, int n) {
+    }
+
+    static void send(int n) {
+    }
+
+    static void send(Integer n) {
+    }
+
+    static void send(java.util.Date d) {
+    }
+
+    static void send(java.sql.Date d) {
+    }
+
+    static void send(byte[] b) {
+    }
+
+    static void send(String[][] s) {
+    }
+
+    static void send(List<String> l) {
+    }
+
+    static void send(String fmt, Object... rest) {
+    }
+
+    public static void main(String[] args) {
+        send();
+        send("a", 1);
+        send(1);
+        send(Integer.valueOf(2));
+        send(new java.util.Date(0));
+        send(new java.sql.Date(0));
+        send(new byte[] {1});
+        send(new String[][] {{"x"}});
+        send(Collections.<String>emptyList());
+        send("f", 1, 2);
+        new Box<String>().put("k");
+    }
+}
+-- spec.yaml --
+probes:
+  - id: all
+    where: { class: Main, method: send, at: [entry] }
+  - id: qualified
+    where: { class: Main, method: send, params: [java.lang.String, int], at: [entry] }
+  - id: simple
+    where: { class: Main, method: send, params: [String, int], at: [entry] }
+  - id: ambiguous
+    where: { class: Main, method: send, params: [Date], at: [entry] }
+  - id: empty
+    where: { class: Main, method: send, params: [], at: [entry] }
+  - id: primitive
+    where: { class: Main, method: send, params: [int], at: [entry] }
+  - id: boxed
+    where: { class: Main, method: send, params: [Integer], at: [entry] }
+  - id: arrays
+    where: { class: Main, method: send, params: ['byte[]'], at: [entry] }
+  - id: arrays2
+    where: { class: Main, method: send, params: ['String[][]'], at: [entry] }
+  - id: generic
+    where: { class: Main, method: send, params: ['List<Order>'], at: [entry] }
+  - id: varargs
+    where: { class: Main, method: send, params: [String, Object...], at: [entry] }
+  - id: typevar
+    where: { class: 'Main$Box', method: put, params: [K], at: [entry] }
+    what: [args]
+  - id: nomatch
+    where: { class: Main, method: send, params: [long], at: [entry] }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"all","msg":"placed","class":"Main","methods":10,"pid":1}
+{"kind":"diag","level":"info","probe":"qualified","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"simple","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"ambiguous","msg":"placed","class":"Main","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"empty","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"primitive","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"boxed","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"arrays","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"arrays2","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"generic","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"varargs","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"empty","point":"entry","method":"Main.send()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"qualified","point":"entry","method":"Main.send(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"simple","point":"entry","method":"Main.send(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"primitive","point":"entry","method":"Main.send(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(Integer)","call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"boxed","point":"entry","method":"Main.send(Integer)","call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(Date)","call":5,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"ambiguous","point":"entry","method":"Main.send(Date)","call":5,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(Date)","call":6,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"ambiguous","point":"entry","method":"Main.send(Date)","call":6,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(byte[])","call":7,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"arrays","point":"entry","method":"Main.send(byte[])","call":7,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(String[][])","call":8,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"arrays2","point":"entry","method":"Main.send(String[][])","call":8,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(List)","call":9,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"generic","point":"entry","method":"Main.send(List)","call":9,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"all","point":"entry","method":"Main.send(String, Object[])","call":10,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"varargs","point":"entry","method":"Main.send(String, Object[])","call":10,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"diag","level":"info","probe":"typevar","msg":"placed","class":"Main$Box","methods":1,"pid":1}
+{"kind":"hit","probe":"typevar","point":"entry","method":"Main$Box.put(Object)","call":11,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":["k"]}}
+{"kind":"diag","level":"error","probe":"nomatch","msg":"no method send with params [long] matched in Main","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"all":10,"ambiguous":2,"arrays":1,"arrays2":1,"boxed":1,"empty":1,"generic":1,"primitive":1,"qualified":1,"simple":1,"typevar":1,"varargs":1},"dropped":0,"when_errors":{}}

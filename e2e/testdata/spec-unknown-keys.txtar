@@ -18,6 +18,7 @@ probes:
 komar: spec.yaml:1:1: unknown key "prbes" (did you mean "probes"?)
 komar: spec.yaml:4:5: unknown key "wher" in probe (did you mean "where"?)
 komar: spec.yaml:3:5: probe "a" has no "where"
+komar: spec.yaml:6:12: probe "a": where has no "method"
 komar: spec.yaml:5:5: duplicate probe id "a"
 komar: spec.yaml:7:5: probe has no "id"
-komar: 5 errors, nothing started
+komar: 6 errors, nothing started

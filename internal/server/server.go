@@ -2,23 +2,33 @@ package server
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"komar/internal/writer"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
-const maxRecordBytes = 16 << 20
+const (
+	maxRecordBytes = 16 << 20
+	kindHit        = "hit"
+	kindStats      = "stats"
+)
+
+type Totals struct {
+	Hits    map[string]int
+	Dropped int64
+	Invalid int64
+}
 
 type Server struct {
-	ln      net.Listener
-	out     *writer.Writer
-	wg      sync.WaitGroup
-	mu      sync.Mutex
-	conns   map[net.Conn]struct{}
-	invalid atomic.Int64
+	ln     net.Listener
+	out    *writer.Writer
+	wg     sync.WaitGroup
+	mu     sync.Mutex
+	conns  map[net.Conn]struct{}
+	totals Totals
 }
 
 func Listen(out *writer.Writer) (*Server, error) {
@@ -26,7 +36,7 @@ func Listen(out *writer.Writer) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen for agents: %w", err)
 	}
-	s := &Server{ln: ln, out: out, conns: map[net.Conn]struct{}{}}
+	s := &Server{ln: ln, out: out, conns: map[net.Conn]struct{}{}, totals: Totals{Hits: map[string]int{}}}
 	s.wg.Add(1)
 	go s.accept()
 	return s, nil
@@ -37,8 +47,14 @@ func (s *Server) Addr() *net.TCPAddr {
 	return addr
 }
 
-func (s *Server) Invalid() int64 {
-	return s.invalid.Load()
+func (s *Server) Totals() Totals {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	hits := make(map[string]int, len(s.totals.Hits))
+	for k, v := range s.totals.Hits {
+		hits[k] = v
+	}
+	return Totals{Hits: hits, Dropped: s.totals.Dropped, Invalid: s.totals.Invalid}
 }
 
 func (s *Server) Shutdown(grace time.Duration) {
@@ -87,8 +103,37 @@ func (s *Server) read(c net.Conn) {
 	sc := bufio.NewScanner(c)
 	sc.Buffer(make([]byte, 64<<10), maxRecordBytes)
 	for sc.Scan() {
-		if err := s.out.Forward(sc.Bytes()); err != nil {
-			s.invalid.Add(1)
-		}
+		s.handle(sc.Bytes())
 	}
+}
+
+type header struct {
+	Kind    string `json:"kind"`
+	Probe   string `json:"probe"`
+	Dropped int64  `json:"dropped"`
+}
+
+func (s *Server) handle(line []byte) {
+	var h header
+	if err := json.Unmarshal(line, &h); err != nil {
+		s.count(func(t *Totals) { t.Invalid++ })
+		return
+	}
+	if h.Kind == kindStats {
+		s.count(func(t *Totals) { t.Dropped += h.Dropped })
+		return
+	}
+	if err := s.out.Forward(line); err != nil {
+		s.count(func(t *Totals) { t.Invalid++ })
+		return
+	}
+	if h.Kind == kindHit {
+		s.count(func(t *Totals) { t.Hits[h.Probe]++ })
+	}
+}
+
+func (s *Server) count(update func(*Totals)) {
+	s.mu.Lock()
+	update(&s.totals)
+	s.mu.Unlock()
 }

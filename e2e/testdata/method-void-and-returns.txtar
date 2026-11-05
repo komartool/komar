@@ -1,0 +1,47 @@
+# a void method's exit has no ret key; a method with several returns records the right ret on each path; null ret is a real null
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static void log(String s) {
+        System.out.println(s);
+    }
+
+    static String sign(int x) {
+        if (x < 0) {
+            return "neg";
+        }
+        if (x == 0) {
+            return null;
+        }
+        return "pos";
+    }
+
+    public static void main(String[] args) {
+        log("start");
+        sign(-1);
+        sign(0);
+        sign(7);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: log
+    where: { class: Main, method: log, at: [exit] }
+    what: [ret]
+  - id: sign
+    where: { class: Main, method: sign, at: [exit] }
+    what: [args, ret]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"log","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"sign","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"log","point":"exit","method":"Main.log(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"sign","point":"exit","method":"Main.sign(int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[-1],"ret":"neg"}}
+{"kind":"hit","probe":"sign","point":"exit","method":"Main.sign(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[0],"ret":null}}
+{"kind":"hit","probe":"sign","point":"exit","method":"Main.sign(int)","call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[7],"ret":"pos"}}
+{"kind":"end","reason":"exit","code":0,"hits":{"log":1,"sign":3},"dropped":0,"when_errors":{}}

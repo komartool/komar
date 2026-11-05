@@ -42,6 +42,9 @@ func Main(args []string, stderr io.Writer) int {
 	if err != nil {
 		return reportSpecError(stderr, err)
 	}
+	for _, w := range s.Warnings {
+		say(stderr, "komar: warning: %s:%d:%d: %s\n", s.Path, w.Line, w.Col, w.Msg)
+	}
 	return run(ra, s, stderr)
 }
 
@@ -126,7 +129,7 @@ func session(ra runArgs, s *spec.Spec, out *writer.Writer, stderr io.Writer) int
 	}
 	defer srv.Shutdown(agentGrace)
 	addr := srv.Addr()
-	js, err := jvm.Prepare(addr.IP.String(), addr.Port)
+	js, err := jvm.Prepare(addr.IP.String(), addr.Port, s)
 	if err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitStart
@@ -152,10 +155,11 @@ func finish(proc *launch.Process, srv *server.Server, out *writer.Writer, stderr
 		return exitFailure
 	}
 	srv.Shutdown(agentGrace)
-	if n := srv.Invalid(); n > 0 {
-		say(stderr, "komar: warning: %d malformed records from agents were skipped\n", n)
+	totals := srv.Totals()
+	if totals.Invalid > 0 {
+		say(stderr, "komar: warning: %d malformed records from agents were skipped\n", totals.Invalid)
 	}
-	if err := out.Write(endRecord(reason(), code)); err != nil {
+	if err := out.Write(endRecord(reason(), code, totals)); err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
 	}
@@ -202,6 +206,7 @@ type endRec struct {
 	Reason     string         `json:"reason"`
 	Code       int            `json:"code"`
 	Hits       map[string]int `json:"hits"`
+	Dropped    int64          `json:"dropped"`
 	WhenErrors map[string]int `json:"when_errors"`
 }
 
@@ -216,6 +221,9 @@ func runRecord(ra runArgs, s *spec.Spec) runRec {
 	}
 }
 
-func endRecord(reason string, code int) endRec {
-	return endRec{Kind: "end", Reason: reason, Code: code, Hits: map[string]int{}, WhenErrors: map[string]int{}}
+func endRecord(reason string, code int, t server.Totals) endRec {
+	return endRec{
+		Kind: "end", Reason: reason, Code: code,
+		Hits: t.Hits, Dropped: t.Dropped, WhenErrors: map[string]int{},
+	}
 }

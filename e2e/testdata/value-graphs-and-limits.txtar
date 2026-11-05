@@ -1,0 +1,71 @@
+# cycles and shared objects use @id/@ref; depth, items, string and fields limits mark what was cut; spec-wide and per-probe limits merge per key
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+import java.util.ArrayList;
+import java.util.List;
+
+public class Main {
+    static class Node {
+        private String name;
+        private Node next;
+        private Node other;
+
+        Node(String name) {
+            this.name = name;
+        }
+    }
+
+    static class Wide {
+        private int a = 1;
+        private int b = 2;
+        private int c = 3;
+    }
+
+    static void graph(Node n) {
+    }
+
+    static void big(List<Integer> list, String text, Wide w) {
+    }
+
+    public static void main(String[] args) {
+        Node a = new Node("a");
+        Node b = new Node("b");
+        a.next = b;
+        b.next = a;
+        a.other = b;
+        graph(a);
+        Node c1 = new Node("1");
+        c1.next = new Node("2");
+        c1.next.next = new Node("3");
+        c1.next.next.next = new Node("4");
+        graph(c1);
+        List<Integer> list = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            list.add(i);
+        }
+        big(list, "abcdefgh", new Wide());
+    }
+}
+-- spec.yaml --
+limits: { items: 3, string: 4 }
+probes:
+  - id: graph
+    where: { class: Main, method: graph, at: [entry] }
+    what: [args]
+  - id: big
+    where: { class: Main, method: big, at: [entry] }
+    limits: { fields: 2 }
+    what: [args]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"graph","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"big","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"graph","point":"entry","method":"Main.graph(Node)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[{"@type":"Main$Node","@id":1,"name":"a","next":{"@type":"Main$Node","@id":2,"name":"b","next":{"@ref":1},"other":null},"other":{"@ref":2}}]}}
+{"kind":"hit","probe":"graph","point":"entry","method":"Main.graph(Node)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[{"@type":"Main$Node","name":"1","next":{"@type":"Main$Node","name":"2","next":{"@type":"Main$Node","name":"3","next":{"@type":"Main$Node","@truncated":true},"other":null},"other":null},"other":null}]}}
+{"kind":"hit","probe":"big","point":"entry","method":"Main.big(List, String, Wide)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[{"@size":5,"@items":[0,1,2]},{"@size":8,"@prefix":"abcd"},{"@type":"Main$Wide","a":1,"b":2,"@truncated":["c"]}]}}
+{"kind":"end","reason":"exit","code":0,"hits":{"big":1,"graph":2},"dropped":0,"when_errors":{}}

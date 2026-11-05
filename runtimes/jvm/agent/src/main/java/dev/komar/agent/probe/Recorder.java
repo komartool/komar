@@ -1,0 +1,53 @@
+package dev.komar.agent.probe;
+
+import dev.komar.agent.channel.Channel;
+import dev.komar.agent.json.JsonWriter;
+import java.lang.management.ManagementFactory;
+import java.time.Instant;
+
+public final class Recorder {
+
+    private final Channel channel;
+    private final long pid;
+    private final long startNanos = System.nanoTime();
+
+    public Recorder(Channel channel) {
+        this.channel = channel;
+        String name = ManagementFactory.getRuntimeMXBean().getName();
+        this.pid = Long.parseLong(name.substring(0, name.indexOf('@')));
+    }
+
+    public void diag(String level, String probe, String msg, Object... extra) {
+        JsonWriter out = new JsonWriter().beginObject()
+                .field("kind", "diag")
+                .field("level", level);
+        if (probe != null) {
+            out.field("probe", probe);
+        }
+        out.field("msg", msg);
+        for (int i = 0; i + 1 < extra.length; i += 2) {
+            out.field(String.valueOf(extra[i]), extra[i + 1]);
+        }
+        channel.send(out.field("pid", pid).endObject().toString());
+    }
+
+    void hit(ProbeRuntime probe, Site site, Event e) {
+        Thread thread = Thread.currentThread();
+        JsonWriter out = new JsonWriter().beginObject()
+                .field("kind", "hit")
+                .field("probe", probe.id())
+                .field("point", e.point())
+                .field("method", site.label())
+                .field("call", e.call())
+                .field("parent", e.parent() == 0L ? null : e.parent())
+                .name("thread").beginObject()
+                .field("id", thread.getId())
+                .field("name", thread.getName())
+                .endObject()
+                .field("pid", pid)
+                .field("ts", Instant.now().toString())
+                .field("t", System.nanoTime() - startNanos)
+                .field("what", What.capture(probe.spec(), e, site));
+        channel.send(out.endObject().toString());
+    }
+}
