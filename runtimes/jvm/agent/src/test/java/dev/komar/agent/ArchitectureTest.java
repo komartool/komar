@@ -21,10 +21,12 @@ final class ArchitectureTest {
             .layer("Value").definedBy("dev.komar.agent.value..")
             .layer("Spec").definedBy("dev.komar.agent.spec..")
             .layer("Channel").definedBy("dev.komar.agent.channel..")
+            .layer("Json").definedBy("dev.komar.agent.json..")
             .whereLayer("Entry").mayNotBeAccessedByAnyLayer()
             .whereLayer("Probe").mayOnlyBeAccessedByLayers("Entry")
             .whereLayer("Cel").mayOnlyBeAccessedByLayers("Probe")
             .whereLayer("Value").mayOnlyBeAccessedByLayers("Probe", "Cel")
+            .whereLayer("Json").mayOnlyBeAccessedByLayers("Probe", "Spec", "Value")
             .whereLayer("Channel").mayOnlyBeAccessedByLayers("Entry", "Probe")
             .whereLayer("Spec").mayOnlyBeAccessedByLayers("Entry", "Probe", "Cel");
 

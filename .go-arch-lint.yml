@@ -14,7 +14,7 @@ excludeFiles:
 
 vendors:
   yaml: { in: [gopkg.in/yaml.v3] }
-  cel: { in: [github.com/google/cel-go/**] }
+  cel: { in: [cel.dev/cel-go/**] }
   testscript: { in: [github.com/rogpeppe/go-internal/**] }
 
 components:

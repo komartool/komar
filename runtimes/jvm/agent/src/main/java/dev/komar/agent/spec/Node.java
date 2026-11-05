@@ -29,6 +29,10 @@ final class Node {
         return ((Number) v).intValue();
     }
 
+    boolean has(String key) {
+        return map.get(key) != null;
+    }
+
     boolean bool(String key) {
         return Boolean.TRUE.equals(map.get(key));
     }

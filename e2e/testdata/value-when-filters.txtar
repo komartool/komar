@@ -1,0 +1,59 @@
+# when filters hits per point; a condition on args filters entry and exit of one call alike; ints and doubles compare on one number line
+exec javac --release 8 -Xlint:-options -parameters -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static class Order {
+        private final long id;
+        private final double total;
+
+        Order(long id, double total) {
+            this.id = id;
+            this.total = total;
+        }
+    }
+
+    static boolean charge(Order order) {
+        return order.total < 5000;
+    }
+
+    public static void main(String[] args) {
+        charge(new Order(1, 500));
+        charge(new Order(2, 1500));
+        charge(new Order(3, 9000));
+    }
+}
+-- spec.yaml --
+probes:
+  - id: big
+    where: { class: Main, method: charge, at: [entry, exit] }
+    when: 'args[0].total > 1000'
+    what:
+      - id: args[0].id
+      - ret
+  - id: big_double
+    where: { class: Main, method: charge, at: [entry] }
+    when: 'vars.order.total > 1000.0 && vars.order.total < 2000'
+    what:
+      - id: vars.order.id
+  - id: refused
+    where: { class: Main, method: charge, at: [exit] }
+    when: '!ret'
+    what:
+      - id: vars.order.id
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"big","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"big_double","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"refused","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"big","point":"entry","method":"Main.charge(Order)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"id":2}}
+{"kind":"hit","probe":"big_double","point":"entry","method":"Main.charge(Order)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"id":2}}
+{"kind":"hit","probe":"big","point":"exit","method":"Main.charge(Order)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"id":2,"ret":true}}
+{"kind":"hit","probe":"big","point":"entry","method":"Main.charge(Order)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"id":3}}
+{"kind":"hit","probe":"big","point":"exit","method":"Main.charge(Order)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"id":3,"ret":false}}
+{"kind":"hit","probe":"refused","point":"exit","method":"Main.charge(Order)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"id":3}}
+{"kind":"end","reason":"exit","code":0,"hits":{"big":4,"big_double":1,"refused":1},"dropped":0,"when_errors":{}}

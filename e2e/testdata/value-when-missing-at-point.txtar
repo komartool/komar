@@ -1,0 +1,54 @@
+# a when using a value missing at a point warns before launch and never fires there; other points still fire
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+stderr 'komar: warning: spec.yaml:4:11: probe "nulls": when uses ret, not available at entry; entry will never fire'
+stderr 'komar: warning: spec.yaml:8:11: probe "slow": when uses duration, not available at entry; entry will never fire'
+stderr 'komar: warning: spec.yaml:12:11: probe "errs": when uses exception, not available at exit; exit will never fire'
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static String find(int id) {
+        if (id < 0) {
+            throw new IllegalArgumentException("bad id " + id);
+        }
+        return id == 0 ? null : "item" + id;
+    }
+
+    public static void main(String[] args) {
+        find(0);
+        find(1);
+        try {
+            find(-1);
+        } catch (IllegalArgumentException e) {
+            System.out.println("caught");
+        }
+    }
+}
+-- spec.yaml --
+probes:
+  - id: nulls
+    where: { class: Main, method: find, at: [entry, exit] }
+    when: 'ret == null'
+    what: [args]
+  - id: slow
+    where: { class: Main, method: find, at: [entry, exit] }
+    when: 'duration >= 0'
+    what: [args]
+  - id: errs
+    where: { class: Main, method: find, at: [exit, exception] }
+    when: 'exception.message.startsWith("bad")'
+    what:
+      - msg: exception.message
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"nulls","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"slow","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"errs","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"nulls","point":"exit","method":"Main.find(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[0]}}
+{"kind":"hit","probe":"slow","point":"exit","method":"Main.find(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[0]}}
+{"kind":"hit","probe":"slow","point":"exit","method":"Main.find(int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[1]}}
+{"kind":"hit","probe":"errs","point":"exception","method":"Main.find(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"msg":"bad id -1"}}
+{"kind":"end","reason":"exit","code":0,"hits":{"errs":1,"nulls":1,"slow":2},"dropped":0,"when_errors":{}}

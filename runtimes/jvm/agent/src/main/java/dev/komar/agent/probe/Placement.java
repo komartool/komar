@@ -1,5 +1,6 @@
 package dev.komar.agent.probe;
 
+import dev.komar.agent.cel.CelEngine;
 import dev.komar.agent.spec.ProbeSpec;
 import dev.komar.agent.spec.SessionSpec;
 import java.lang.instrument.Instrumentation;
@@ -26,8 +27,9 @@ public final class Placement {
 
     private Placement(SessionSpec spec, Recorder recorder) {
         this.recorder = recorder;
+        CelEngine cel = new CelEngine();
         for (ProbeSpec p : spec.probes()) {
-            probes.add(new ProbeRuntime(p));
+            probes.add(new ProbeRuntime(p, cel, recorder));
         }
         this.engine = new Engine(recorder, probes);
     }
@@ -39,6 +41,8 @@ public final class Placement {
                 .disableClassFormatChanges()
                 .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
                 .with(AgentBuilder.InjectionStrategy.Disabled.INSTANCE)
+                .with(AgentBuilder.DescriptionStrategy.Default.POOL_FIRST)
+                .with(AgentBuilder.PoolStrategy.Default.EXTENDED)
                 .with(placement.listener())
                 .ignore(ElementMatchers.any(), ElementMatchers.isBootstrapClassLoader())
                 .or(ElementMatchers.nameStartsWith("dev.komar."))
@@ -106,12 +110,37 @@ public final class Placement {
     private DynamicType.Builder<?> advise(DynamicType.Builder<?> builder, TypeDescription td,
                                           MethodDescription.InDefinedShape m, List<ProbeRuntime> matched) {
         boolean returnsValue = !m.isConstructor() && !m.getReturnType().represents(void.class);
-        int site = engine.register(new Site(label(td, m), returnsValue, matched));
+        Site s = new Site(label(td, m), returnsValue, paramNames(m), matched);
+        reportMissingVars(s, matched);
+        int site = engine.register(s);
         Class<?> advice = m.isConstructor() ? ConstructorAdvice.class : MethodAdvice.class;
         return builder.visit(Advice.withCustomMapping()
                 .bind(SiteId.class, site)
                 .to(advice)
                 .on(ElementMatchers.is(m)));
+    }
+
+    private static String[] paramNames(MethodDescription m) {
+        String[] names = new String[m.getParameters().size()];
+        for (ParameterDescription p : m.getParameters()) {
+            names[p.getIndex()] = p.isNamed() ? p.getName() : null;
+        }
+        return names;
+    }
+
+    private void reportMissingVars(Site site, List<ProbeRuntime> matched) {
+        for (ProbeRuntime p : matched) {
+            for (String name : p.expressions().referencedVars()) {
+                if (site.hasVar(name)) {
+                    continue;
+                }
+                String why = site.namesKnown()
+                        ? "no parameter named " + name + " (local variables need a line probe)"
+                        : "parameter names are missing: compiled without -parameters or -g";
+                recorder.diag("warn", p.id(), "vars." + name + " is not available in " + site.label()
+                        + ": " + why + "; items using it are left out and when is false");
+            }
+        }
     }
 
     private void reportPlaced(TypeDescription td, List<ProbeRuntime> forType, int[] counts) {

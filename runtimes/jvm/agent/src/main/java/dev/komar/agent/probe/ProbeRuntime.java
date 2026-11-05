@@ -1,5 +1,6 @@
 package dev.komar.agent.probe;
 
+import dev.komar.agent.cel.CelEngine;
 import dev.komar.agent.spec.ProbeSpec;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +13,7 @@ import net.bytebuddy.matcher.ElementMatchers;
 final class ProbeRuntime {
 
     private final ProbeSpec spec;
+    private final ProbeExpressions expressions;
     private final NamePattern classPattern;
     private final NamePattern methodPattern;
     private final ElementMatcher<TypeDescription> typeMatcher;
@@ -22,8 +24,9 @@ final class ProbeRuntime {
     private volatile boolean typeSeen;
     private volatile boolean abstractSeen;
 
-    ProbeRuntime(ProbeSpec spec) {
+    ProbeRuntime(ProbeSpec spec, CelEngine cel, Recorder recorder) {
         this.spec = spec;
+        this.expressions = new ProbeExpressions(spec, cel, recorder);
         this.classPattern = new NamePattern(spec.classPattern());
         this.methodPattern = new NamePattern(spec.method());
         ElementMatcher<TypeDescription> named = td -> classPattern.matchesClass(td.getName());
@@ -32,6 +35,10 @@ final class ProbeRuntime {
 
     ProbeSpec spec() {
         return spec;
+    }
+
+    ProbeExpressions expressions() {
+        return expressions;
     }
 
     String id() {

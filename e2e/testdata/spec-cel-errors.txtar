@@ -1,0 +1,29 @@
+# CEL mistakes in when and what are reported together with positions inside the expression; nothing starts
+exec-status 2 komar run spec.yaml -o out.jsonl -- java -version
+cmp stderr expected.stderr
+! exists out.jsonl
+
+-- spec.yaml --
+probes:
+  - id: a
+    where: { class: Main, method: run, at: [entry] }
+    when: 'order.total > 1000'
+    what:
+      - bad: 'args[0'
+      - call: args[0].getTotal()
+      - fine: vars.order.total
+  - id: b
+    where: { class: Main, method: run }
+    when: 'size(args) + 1'
+  - id: c
+    where: { class: Main, method: run }
+    when: |
+      vars.order != null &&
+      vars.order.total >
+-- expected.stderr --
+komar: spec.yaml:6:21: probe "a": what "bad": Syntax error: missing ']' at '<EOF>'
+komar: spec.yaml:7:15: probe "a": what "call": getTotal() calls a program method; method calls are not implemented yet, read the field instead
+komar: spec.yaml:4:12: probe "a": when: undeclared reference to 'order'; program names are under vars, e.g. vars.order
+komar: spec.yaml:11:11: probe "b": when must be a boolean condition, got int
+komar: spec.yaml:17:1: probe "c": when: Syntax error: mismatched input '<EOF>' expecting {'[', '{', '(', '.', '-', '!', 'true', 'false', 'null', NUM_FLOAT, NUM_INT, NUM_UINT, STRING, BYTES, IDENTIFIER}
+komar: 5 errors, nothing started

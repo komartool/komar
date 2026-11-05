@@ -4,6 +4,7 @@ import dev.komar.agent.channel.Channel;
 import dev.komar.agent.json.JsonWriter;
 import java.lang.management.ManagementFactory;
 import java.time.Instant;
+import java.util.Map;
 
 public final class Recorder {
 
@@ -31,7 +32,14 @@ public final class Recorder {
         channel.send(out.field("pid", pid).endObject().toString());
     }
 
-    void hit(ProbeRuntime probe, Site site, Event e) {
+    void stats(Map<String, Long> whenErrors) {
+        channel.send(new JsonWriter().beginObject()
+                .field("kind", "stats")
+                .field("when_errors", whenErrors)
+                .endObject().toString());
+    }
+
+    void hit(ProbeRuntime probe, Site site, Event e, Map<String, Object> what) {
         Thread thread = Thread.currentThread();
         JsonWriter out = new JsonWriter().beginObject()
                 .field("kind", "hit")
@@ -47,7 +55,7 @@ public final class Recorder {
                 .field("pid", pid)
                 .field("ts", Instant.now().toString())
                 .field("t", System.nanoTime() - startNanos)
-                .field("what", What.capture(probe.spec(), e, site));
+                .field("what", what);
         channel.send(out.endObject().toString());
     }
 }

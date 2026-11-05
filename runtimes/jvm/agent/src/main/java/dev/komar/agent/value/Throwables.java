@@ -19,7 +19,7 @@ final class Throwables {
         }
     }
 
-    private static boolean isJdkMethod(Throwable t, String name) {
+    static boolean isJdkMethod(Throwable t, String name) {
         try {
             return t.getClass().getMethod(name).getDeclaringClass().getClassLoader() == null;
         } catch (NoSuchMethodException e) {

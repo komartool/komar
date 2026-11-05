@@ -13,6 +13,10 @@ public final class Errors {
         if (e.getMessage() != null) {
             msg += ": " + e.getMessage();
         }
+        return message(msg);
+    }
+
+    public static Map<String, Object> message(String msg) {
         return Collections.<String, Object>singletonMap("@error", msg);
     }
 }

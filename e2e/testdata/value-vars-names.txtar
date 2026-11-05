@@ -1,0 +1,76 @@
+# vars needs parameter names: present with -parameters or -g, missing names leave items out, make when false and are reported once with the reason
+exec javac --release 8 -Xlint:-options -parameters -d named Main.java
+exec komar run spec.yaml -o named.jsonl -- java -cp named Main
+jsonl-norm named.jsonl got.jsonl
+cmp got.jsonl named.expected
+
+exec javac --release 8 -Xlint:-options -g -d debug Main.java
+exec komar run spec.yaml -o debug.jsonl -- java -cp debug Main
+jsonl-norm debug.jsonl got.jsonl
+cmp got.jsonl debug.expected
+
+exec javac --release 8 -Xlint:-options -d plain Main.java
+exec komar run spec.yaml -o plain.jsonl -- java -cp plain Main
+jsonl-norm plain.jsonl got.jsonl
+cmp got.jsonl plain.expected
+
+-- Main.java --
+public class Main {
+    static int add(int left, int right) {
+        return left + right;
+    }
+
+    public static void main(String[] args) {
+        add(2, 3);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: named
+    where: { class: Main, method: add, at: [exit] }
+    what:
+      - left: vars.left
+      - sum: ret
+      - first: args[0]
+  - id: filtered
+    where: { class: Main, method: add, at: [entry] }
+    when: 'vars.right > 1'
+  - id: typo
+    where: { class: Main, method: add, at: [entry] }
+    what:
+      - wrong: vars.rihgt
+      - first: args[0]
+-- named.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","named","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"warn","probe":"typo","msg":"vars.rihgt is not available in Main.add(int, int): no parameter named rihgt (local variables need a line probe); items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"info","probe":"named","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"filtered","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"typo","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"filtered","point":"entry","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"typo","point":"entry","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"first":2}}
+{"kind":"hit","probe":"named","point":"exit","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"left":2,"sum":5,"first":2}}
+{"kind":"end","reason":"exit","code":0,"hits":{"filtered":1,"named":1,"typo":1},"dropped":0,"when_errors":{}}
+-- debug.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","debug","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"warn","probe":"typo","msg":"vars.rihgt is not available in Main.add(int, int): no parameter named rihgt (local variables need a line probe); items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"info","probe":"named","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"filtered","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"typo","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"filtered","point":"entry","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"typo","point":"entry","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"first":2}}
+{"kind":"hit","probe":"named","point":"exit","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"left":2,"sum":5,"first":2}}
+{"kind":"end","reason":"exit","code":0,"hits":{"filtered":1,"named":1,"typo":1},"dropped":0,"when_errors":{}}
+-- plain.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","plain","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"warn","probe":"named","msg":"vars.left is not available in Main.add(int, int): parameter names are missing: compiled without -parameters or -g; items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"warn","probe":"filtered","msg":"vars.right is not available in Main.add(int, int): parameter names are missing: compiled without -parameters or -g; items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"warn","probe":"typo","msg":"vars.rihgt is not available in Main.add(int, int): parameter names are missing: compiled without -parameters or -g; items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"info","probe":"named","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"filtered","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"typo","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"typo","point":"entry","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"first":2}}
+{"kind":"hit","probe":"named","point":"exit","method":"Main.add(int, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"sum":5,"first":2}}
+{"kind":"end","reason":"exit","code":0,"hits":{"named":1,"typo":1},"dropped":0,"when_errors":{}}

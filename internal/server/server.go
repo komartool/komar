@@ -17,9 +17,10 @@ const (
 )
 
 type Totals struct {
-	Hits    map[string]int
-	Dropped int64
-	Invalid int64
+	Hits       map[string]int
+	WhenErrors map[string]int64
+	Dropped    int64
+	Invalid    int64
 }
 
 type Server struct {
@@ -36,7 +37,7 @@ func Listen(out *writer.Writer) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen for agents: %w", err)
 	}
-	s := &Server{ln: ln, out: out, conns: map[net.Conn]struct{}{}, totals: Totals{Hits: map[string]int{}}}
+	s := &Server{ln: ln, out: out, conns: map[net.Conn]struct{}{}, totals: Totals{Hits: map[string]int{}, WhenErrors: map[string]int64{}}}
 	s.wg.Add(1)
 	go s.accept()
 	return s, nil
@@ -54,7 +55,11 @@ func (s *Server) Totals() Totals {
 	for k, v := range s.totals.Hits {
 		hits[k] = v
 	}
-	return Totals{Hits: hits, Dropped: s.totals.Dropped, Invalid: s.totals.Invalid}
+	whenErrors := make(map[string]int64, len(s.totals.WhenErrors))
+	for k, v := range s.totals.WhenErrors {
+		whenErrors[k] = v
+	}
+	return Totals{Hits: hits, WhenErrors: whenErrors, Dropped: s.totals.Dropped, Invalid: s.totals.Invalid}
 }
 
 func (s *Server) Shutdown(grace time.Duration) {
@@ -108,9 +113,10 @@ func (s *Server) read(c net.Conn) {
 }
 
 type header struct {
-	Kind    string `json:"kind"`
-	Probe   string `json:"probe"`
-	Dropped int64  `json:"dropped"`
+	Kind       string           `json:"kind"`
+	Probe      string           `json:"probe"`
+	Dropped    int64            `json:"dropped"`
+	WhenErrors map[string]int64 `json:"when_errors"`
 }
 
 func (s *Server) handle(line []byte) {
@@ -120,7 +126,12 @@ func (s *Server) handle(line []byte) {
 		return
 	}
 	if h.Kind == kindStats {
-		s.count(func(t *Totals) { t.Dropped += h.Dropped })
+		s.count(func(t *Totals) {
+			t.Dropped += h.Dropped
+			for k, v := range h.WhenErrors {
+				t.WhenErrors[k] += v
+			}
+		})
 		return
 	}
 	if err := s.out.Forward(line); err != nil {

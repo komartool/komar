@@ -20,6 +20,8 @@ java {
 
 dependencies {
     implementation("net.bytebuddy:byte-buddy:1.18.17")
+    implementation("dev.cel:compiler:0.15.0")
+    implementation("dev.cel:runtime:0.15.0")
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
     errorprone("com.google.errorprone:error_prone_core:2.52.0")
     testImplementation(platform("org.junit:junit-bom:6.1.3"))
@@ -51,7 +53,14 @@ checkstyle {
 tasks.shadowJar {
     archiveFileName = "komar-agent.jar"
     relocate("net.bytebuddy", "dev.komar.shaded.bytebuddy")
-    exclude("META-INF/maven/**", "META-INF/LICENSE*", "META-INF/NOTICE*", "module-info.class", "META-INF/versions/*/module-info.class")
+    relocate("dev.cel", "dev.komar.shaded.cel")
+    relocate("cel.parser", "dev.komar.shaded.celparser")
+    relocate("com.google", "dev.komar.shaded.google")
+    relocate("org.antlr", "dev.komar.shaded.antlr")
+    relocate("org.threeten", "dev.komar.shaded.threeten")
+    relocate("org.jspecify", "dev.komar.shaded.jspecify")
+    relocate("org.yaml", "dev.komar.shaded.yaml")
+    exclude("META-INF/maven/**", "META-INF/LICENSE*", "META-INF/NOTICE*", "module-info.class", "META-INF/versions/*/module-info.class", "google/protobuf/*.proto")
     manifest {
         attributes(
             "Premain-Class" to "dev.komar.agent.Agent",

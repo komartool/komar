@@ -1,7 +1,9 @@
 package dev.komar.agent.probe;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -35,10 +37,10 @@ final class Engine {
         Site site = sites[siteId];
         long id = calls.incrementAndGet();
         long parent = stack.top();
-        stack.push(id, System.nanoTime());
         if (site.wants(Points.ENTRY)) {
             emit(stack, site, new Event(Points.ENTRY, id, parent, self, args));
         }
+        stack.push(id, System.nanoTime());
         return id;
     }
 
@@ -69,20 +71,27 @@ final class Engine {
     }
 
     void finish() {
+        Map<String, Long> whenErrors = new LinkedHashMap<>();
         for (ProbeRuntime p : probes) {
             String reason = p.unplacedReason();
             if (reason != null) {
                 recorder.diag("error", p.id(), reason);
             }
+            long errors = p.expressions().whenErrors();
+            if (errors > 0) {
+                whenErrors.put(p.id(), errors);
+            }
         }
+        recorder.stats(whenErrors);
     }
 
     private void emit(CallStack stack, Site site, Event e) {
         stack.busy(true);
         try {
+            Scope scope = new Scope(site, e);
             for (ProbeRuntime p : site.probes()) {
-                if (p.wants(e.point()) && p.admitHit(recorder)) {
-                    recorder.hit(p, site, e);
+                if (p.wants(e.point()) && p.expressions().test(site, scope, recorder) && p.admitHit(recorder)) {
+                    recorder.hit(p, site, e, p.expressions().capture(site, scope));
                 }
             }
         } finally {

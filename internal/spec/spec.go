@@ -10,6 +10,7 @@ import (
 
 type Spec struct {
 	Path     string
+	Calls    bool
 	Limits   Limits
 	Probes   []Probe
 	Warnings []Problem
@@ -18,8 +19,19 @@ type Spec struct {
 type Probe struct {
 	ID     string
 	Where  Where
+	When   *Expr
 	What   []Item
 	Limits Limits
+}
+
+type Expr struct {
+	Text   string
+	Line   int
+	Col    int
+	Quoted bool
+	Block  bool
+	Roots  []string
+	Vars   []string
 }
 
 type Where struct {
@@ -33,13 +45,14 @@ type Where struct {
 
 type Item struct {
 	Key  string
-	Expr string
+	Expr Expr
 }
 
 type Problem struct {
-	Line int
-	Col  int
-	Msg  string
+	Line  int
+	Col   int
+	Probe string
+	Msg   string
 }
 
 type InvalidError struct {
@@ -66,10 +79,10 @@ func Load(path string) (*Spec, error) {
 	}
 	c := &checker{}
 	s := c.document(&doc)
-	if len(c.problems) > 0 {
-		return nil, &InvalidError{Path: path, Problems: c.problems}
-	}
 	s.Path = path
 	s.Warnings = c.warnings
+	if len(c.problems) > 0 {
+		return s, &InvalidError{Path: path, Problems: c.problems}
+	}
 	return s, nil
 }

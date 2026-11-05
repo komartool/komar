@@ -41,13 +41,27 @@ type sessionProbe struct {
 	Method   string        `json:"method"`
 	Params   []string      `json:"params"`
 	At       []string      `json:"at"`
+	When     *sessionItem  `json:"when"`
 	What     []sessionItem `json:"what"`
 	Limits   spec.Limits   `json:"limits"`
 }
 
 type sessionItem struct {
-	Key  string `json:"key"`
-	Expr string `json:"expr"`
+	Key   string   `json:"key"`
+	Expr  string   `json:"expr"`
+	Roots []string `json:"roots"`
+	Vars  []string `json:"vars"`
+}
+
+func item(key string, e spec.Expr) sessionItem {
+	return sessionItem{Key: key, Expr: e.Text, Roots: nonNil(e.Roots), Vars: nonNil(e.Vars)}
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }
 
 func encodeSession(host string, port int, s *spec.Spec) ([]byte, error) {
@@ -60,8 +74,12 @@ func encodeSession(host string, port int, s *spec.Spec) ([]byte, error) {
 		if p.Where.HasParam {
 			sp.Params = append([]string{}, p.Where.Params...)
 		}
+		if p.When != nil {
+			w := item("when", *p.When)
+			sp.When = &w
+		}
 		for _, it := range p.What {
-			sp.What = append(sp.What, sessionItem{Key: it.Key, Expr: it.Expr})
+			sp.What = append(sp.What, item(it.Key, it.Expr))
 		}
 		f.Probes = append(f.Probes, sp)
 	}

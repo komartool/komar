@@ -40,7 +40,10 @@ func (c *checker) document(doc *yaml.Node) *Spec {
 	}
 	top := c.mapping(root, topKeys, "")
 	c.version(top["version"])
-	c.boolean(top["calls"], "calls")
+	s.Calls = c.boolean(top["calls"], "calls")
+	if s.Calls {
+		c.warn(top["calls"], `"calls: true" is not implemented yet; method calls in expressions are rejected`)
+	}
 	s.Limits = c.limits(top["limits"], s.Limits)
 	c.notYet(top["stop"], "stop")
 	c.notYet(top["jvm"], "jvm")
@@ -129,9 +132,7 @@ func (c *checker) probe(n *yaml.Node, limits Limits) (Probe, bool) {
 	} else {
 		p.Where = c.where(values["where"], p.ID)
 	}
-	if when := values["when"]; when != nil {
-		c.add(when, "probe %q: \"when\" is not implemented yet", p.ID)
-	}
+	p.When = c.when(values["when"], p.ID)
 	p.What = c.what(values["what"], p.ID)
 	return p, true
 }

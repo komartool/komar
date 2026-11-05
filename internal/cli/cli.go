@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"komar/internal/celcheck"
 	"komar/internal/launch"
 	"komar/internal/runtime/jvm"
 	"komar/internal/server"
@@ -38,7 +39,7 @@ func Main(args []string, stderr io.Writer) int {
 		say(stderr, "komar: %v\nusage: komar run <spec.yaml> -o <out.jsonl> -- <program> [args...]\n", err)
 		return exitUsage
 	}
-	s, err := spec.Load(ra.spec)
+	s, err := load(ra.spec)
 	if err != nil {
 		return reportSpecError(stderr, err)
 	}
@@ -46,6 +47,27 @@ func Main(args []string, stderr io.Writer) int {
 		say(stderr, "komar: warning: %s:%d:%d: %s\n", s.Path, w.Line, w.Col, w.Msg)
 	}
 	return run(ra, s, stderr)
+}
+
+func load(path string) (*spec.Spec, error) {
+	s, err := spec.Load(path)
+	var invalid *spec.InvalidError
+	if s == nil || (err != nil && !errors.As(err, &invalid)) {
+		return nil, fmt.Errorf("load spec: %w", err)
+	}
+	res, cerr := celcheck.Check(s)
+	if cerr != nil {
+		return nil, fmt.Errorf("check expressions: %w", cerr)
+	}
+	s.Warnings = append(s.Warnings, res.Warnings...)
+	if invalid == nil && len(res.Errors) == 0 {
+		return s, nil
+	}
+	if invalid == nil {
+		invalid = &spec.InvalidError{Path: s.Path}
+	}
+	invalid.Problems = append(invalid.Problems, res.Errors...)
+	return nil, invalid
 }
 
 func say(w io.Writer, format string, args ...any) {
@@ -202,12 +224,12 @@ type runRec struct {
 }
 
 type endRec struct {
-	Kind       string         `json:"kind"`
-	Reason     string         `json:"reason"`
-	Code       int            `json:"code"`
-	Hits       map[string]int `json:"hits"`
-	Dropped    int64          `json:"dropped"`
-	WhenErrors map[string]int `json:"when_errors"`
+	Kind       string           `json:"kind"`
+	Reason     string           `json:"reason"`
+	Code       int              `json:"code"`
+	Hits       map[string]int   `json:"hits"`
+	Dropped    int64            `json:"dropped"`
+	WhenErrors map[string]int64 `json:"when_errors"`
 }
 
 func runRecord(ra runArgs, s *spec.Spec) runRec {
@@ -224,6 +246,6 @@ func runRecord(ra runArgs, s *spec.Spec) runRec {
 func endRecord(reason string, code int, t server.Totals) endRec {
 	return endRec{
 		Kind: "end", Reason: reason, Code: code,
-		Hits: t.Hits, Dropped: t.Dropped, WhenErrors: map[string]int{},
+		Hits: t.Hits, Dropped: t.Dropped, WhenErrors: t.WhenErrors,
 	}
 }

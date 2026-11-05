@@ -19,7 +19,6 @@ probes:
 -- expected.stderr --
 komar: spec.yaml:1:11: unknown limit "hits": "hits" belongs in "stop"; the per-probe cap is "max_hits"
 komar: spec.yaml:4:52: probe "a": unknown point "exitt"; allowed: [entry exit exception] (did you mean "exit"?)
-komar: spec.yaml:5:17: probe "a": what "rett": only [args this ret exception duration] are implemented yet (did you mean "ret"?)
 komar: spec.yaml:5:40: probe "a": duplicate what key "total"
 komar: spec.yaml:7:45: probe "b": "exception" on constructors is not implemented yet
 komar: spec.yaml:9:14: unknown key "clas" in where (did you mean "class"?)
@@ -27,4 +26,5 @@ komar: spec.yaml:9:12: probe "c": where has no "class"
 komar: spec.yaml:9:12: probe "c": where has no "method"
 komar: spec.yaml:12:22: limit "depth" must be a positive integer
 komar: spec.yaml:11:44: probe "d": "at" is empty
+komar: spec.yaml:5:17: probe "a": what "rett": undeclared reference to 'rett' (did you mean 'ret'?); program names are under vars, e.g. vars.rett
 komar: 10 errors, nothing started
