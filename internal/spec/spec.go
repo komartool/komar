@@ -11,6 +11,7 @@ import (
 type Spec struct {
 	Path     string
 	Calls    bool
+	Stop     Stop
 	Limits   Limits
 	Probes   []Probe
 	Warnings []Problem

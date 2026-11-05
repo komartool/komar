@@ -32,10 +32,11 @@ public final class Recorder {
         channel.send(out.field("pid", pid).endObject().toString());
     }
 
-    void stats(Map<String, Long> whenErrors) {
+    void stats(Map<String, Long> whenErrors, Map<String, String> unplaced) {
         channel.send(new JsonWriter().beginObject()
                 .field("kind", "stats")
                 .field("when_errors", whenErrors)
+                .field("unplaced", unplaced)
                 .endObject().toString());
     }
 

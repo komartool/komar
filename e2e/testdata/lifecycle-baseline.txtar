@@ -1,0 +1,54 @@
+# with every probe kind active the program's stdout, stderr and exit code are the same as without komar, apart from the JVM's JAVA_TOOL_OPTIONS line and komar's own lines
+exec javac --release 8 -Xlint:-options -g -d classes Main.java
+! exec java -cp classes Main
+cp stdout base.out
+cp stderr base.err
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+cmp stdout base.out
+cp stderr run.err
+drop-lines '^(Picked up JAVA_TOOL_OPTIONS|komar: )' run.err filtered.err
+cmp filtered.err base.err
+grep '"kind":"end","reason":"exit","code":7' out.jsonl
+
+-- Main.java --
+import java.util.ArrayList;
+import java.util.List;
+
+public class Main {
+    static int work(List<Integer> xs) {
+        int total = 0;
+        for (int x : xs) {
+            total += Math.abs(x);
+        }
+        if (total > 5) {
+            System.err.println("big total " + total);
+        }
+        return total;
+    }
+
+    public static void main(String[] args) {
+        List<Integer> xs = new ArrayList<>();
+        for (int i = -3; i <= 3; i++) {
+            xs.add(i);
+        }
+        System.out.println("total " + work(xs));
+        try {
+            Integer.parseInt("x");
+        } catch (NumberFormatException e) {
+            System.out.println("caught " + e.getMessage());
+        }
+        System.exit(7);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: method
+    where: { class: Main, method: work }
+    what: [args, ret, duration]
+  - id: line
+    where: { class: Main, method: work, line: [8] }
+    when: 'vars.x < 0'
+    what: [vars.x, vars.total]
+  - id: call
+    where: { class: Main, method: work, call: { class: java.lang.Math, method: abs } }
+    what: [call.args, ret]

@@ -63,5 +63,5 @@ probes:
 {"kind":"diag","level":"info","probe":"sizes","msg":"placed","class":"Main$Sub","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"sizes","msg":"placed","class":"Main$Base","methods":1,"pid":1}
 {"kind":"hit","probe":"sizes","point":"exit","method":"Main$Sub.size()","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
-{"kind":"diag","level":"error","probe":"interface_only","msg":"no method send matched in Main$Gateway; Main$Gateway is an interface or abstract class, use subtypes: true to probe implementations","pid":1}
+{"kind":"diag","level":"error","probe":"interface_only","msg":"no method send matched in Main$Gateway; Main$Gateway is an interface or abstract class, use subtypes: true to probe implementations"}
 {"kind":"end","reason":"exit","code":0,"hits":{"gateways":2,"sizes":1},"dropped":0,"when_errors":{}}

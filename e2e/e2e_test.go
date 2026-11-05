@@ -21,6 +21,7 @@ func TestScript(t *testing.T) {
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"jsonl-norm":  cmdJSONLNorm,
 			"exec-status": cmdExecStatus,
+			"drop-lines":  cmdDropLines,
 		},
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("HOME", os.Getenv("HOME"))

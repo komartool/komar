@@ -30,5 +30,4 @@ probes:
 {"kind":"diag","level":"info","probe":"main","msg":"placed","class":"Child","methods":1,"pid":2}
 {"kind":"hit","probe":"main","point":"entry","method":"Child.main(String[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":2,"ts":"<masked>","what":{}}
 {"kind":"hit","probe":"main","point":"exit","method":"Child.main(String[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":2,"ts":"<masked>","what":{}}
-{"kind":"diag","level":"error","probe":"main","msg":"no class matched Child (none was loaded during the run)","pid":1}
 {"kind":"end","reason":"exit","code":0,"hits":{"main":2},"dropped":0,"when_errors":{}}

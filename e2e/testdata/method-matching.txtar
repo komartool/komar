@@ -76,5 +76,5 @@ probes:
 {"kind":"diag","level":"info","probe":"nested","msg":"placed","class":"Main$Inner","methods":1,"pid":1}
 {"kind":"hit","probe":"nested","point":"exit","method":"Main$Inner.twice(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":8}}
 {"kind":"hit","probe":"exact","point":"exit","method":"Main.secret(int)","call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
-{"kind":"diag","level":"error","probe":"other_not_matched","msg":"no method run matched in Main","pid":1}
+{"kind":"diag","level":"error","probe":"other_not_matched","msg":"no method run matched in Main"}
 {"kind":"end","reason":"exit","code":0,"hits":{"exact":1,"nested":1,"services":2},"dropped":0,"when_errors":{}}

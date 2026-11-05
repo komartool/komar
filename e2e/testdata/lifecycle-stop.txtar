@@ -1,0 +1,53 @@
+# stop.hits writes exactly that many hits and ends the program; stop.after ends a program that never exits; end has reason stop and no code; komar exits 0
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run hits.yaml -o hits.jsonl -- java -cp classes Main
+stderr 'komar: stop condition reached, program terminated'
+jsonl-norm hits.jsonl got.jsonl
+cmp got.jsonl hits.expected
+
+exec komar run after.yaml -o after.jsonl -- java -cp classes Main
+stderr 'komar: stop condition reached, program terminated'
+grep '"kind":"end","reason":"stop","code":null' after.jsonl
+
+exec-status 2 komar run bad.yaml -o bad.jsonl -- java -cp classes Main
+cmp stderr bad.stderr
+
+-- Main.java --
+public class Main {
+    static void tick(int i) {
+    }
+
+    public static void main(String[] args) throws Exception {
+        for (int i = 0; ; i++) {
+            tick(i);
+            Thread.sleep(5);
+        }
+    }
+}
+-- hits.yaml --
+stop: { hits: 3 }
+probes:
+  - id: tick
+    where: { class: Main, method: tick, at: [entry] }
+    what: [args]
+-- after.yaml --
+stop: { after: 1s }
+probes:
+  - id: tick
+    where: { class: Main, method: tick, at: [entry] }
+-- bad.yaml --
+stop: { after: soon, hits: 0, max_hits: 5 }
+probes: []
+-- hits.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"hits.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"tick","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"tick","point":"entry","method":"Main.tick(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[0]}}
+{"kind":"hit","probe":"tick","point":"entry","method":"Main.tick(int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[1]}}
+{"kind":"hit","probe":"tick","point":"entry","method":"Main.tick(int)","call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":[2]}}
+{"kind":"end","reason":"stop","code":null,"hits":{"tick":3},"dropped":0,"when_errors":{}}
+-- bad.stderr --
+komar: bad.yaml:1:16: stop.after "soon" must be a positive duration such as 30s, 2m or 500ms
+komar: bad.yaml:1:28: stop.hits must be a positive integer
+komar: bad.yaml:1:31: unknown key "max_hits" in stop: the run total is "hits"; the per-probe cap "max_hits" belongs in "limits"
+komar: 3 errors, nothing started

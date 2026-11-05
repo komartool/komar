@@ -134,10 +134,11 @@ final class Engine {
 
     void finish() {
         Map<String, Long> whenErrors = new LinkedHashMap<>();
+        Map<String, String> unplaced = new LinkedHashMap<>();
         for (ProbeRuntime p : probes) {
             String reason = p.unplacedReason();
             if (reason != null) {
-                recorder.diag("error", p.id(), reason);
+                unplaced.put(p.id(), reason);
             }
             for (String problem : p.bodyProblems()) {
                 recorder.diag("warn", p.id(), problem);
@@ -147,7 +148,7 @@ final class Engine {
                 whenErrors.put(p.id(), errors);
             }
         }
-        recorder.stats(whenErrors);
+        recorder.stats(whenErrors, unplaced);
     }
 
     private void emit(CallStack stack, Site site, Event e, List<ProbeRuntime> probes) {

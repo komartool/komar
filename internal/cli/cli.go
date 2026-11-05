@@ -12,19 +12,24 @@ import (
 	"komar/internal/writer"
 	"os"
 	"os/signal"
+	"sort"
 	"syscall"
 	"time"
 )
 
 const (
-	Version     = "0.1.0"
-	format      = 1
-	agentGrace  = 3 * time.Second
-	exitOK      = 0
-	exitUsage   = 2
-	exitSpec    = 2
-	exitStart   = 3
-	exitFailure = 4
+	Version      = "0.1.0"
+	format       = 1
+	agentGrace   = 3 * time.Second
+	stopGrace    = 3 * time.Second
+	reasonExit   = "exit"
+	reasonStop   = "stop"
+	reasonSignal = "signal"
+	exitOK       = 0
+	exitUsage    = 2
+	exitSpec     = 2
+	exitStart    = 3
+	exitFailure  = 4
 )
 
 type runArgs struct {
@@ -144,7 +149,7 @@ func run(ra runArgs, s *spec.Spec, stderr io.Writer) int {
 }
 
 func session(ra runArgs, s *spec.Spec, out *writer.Writer, stderr io.Writer) int {
-	srv, err := server.Listen(out)
+	srv, err := server.Listen(out, s.Stop.Hits)
 	if err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitStart
@@ -161,17 +166,24 @@ func session(ra runArgs, s *spec.Spec, out *writer.Writer, stderr io.Writer) int
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
 	}
+	for _, w := range s.Warnings {
+		msg := fmt.Sprintf("%s:%d:%d: %s", s.Path, w.Line, w.Col, w.Msg)
+		if err := out.Write(diagRec{Kind: "diag", Level: "warn", Probe: w.Probe, Msg: msg}); err != nil {
+			say(stderr, "komar: %v\n", err)
+			return exitFailure
+		}
+	}
 	proc, err := launch.Start(ra.program, js.Env(os.Environ()))
 	if err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitStart
 	}
-	return finish(proc, srv, out, stderr)
+	return finish(proc, srv, out, s.Stop, stderr)
 }
 
-func finish(proc *launch.Process, srv *server.Server, out *writer.Writer, stderr io.Writer) int {
-	reason := forwardSignals(proc)
-	code, err := proc.Wait()
+func finish(proc *launch.Process, srv *server.Server, out *writer.Writer, stop spec.Stop, stderr io.Writer) int {
+	reason, stopped := await(proc, srv, stop)
+	code, err := proc.Result()
 	if err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
@@ -181,37 +193,70 @@ func finish(proc *launch.Process, srv *server.Server, out *writer.Writer, stderr
 	if totals.Invalid > 0 {
 		say(stderr, "komar: warning: %d malformed records from agents were skipped\n", totals.Invalid)
 	}
-	if err := out.Write(endRecord(reason(), code, totals)); err != nil {
+	for _, id := range sortedKeys(totals.Unplaced) {
+		if err := out.Write(diagRec{Kind: "diag", Level: "error", Probe: id, Msg: totals.Unplaced[id]}); err != nil {
+			say(stderr, "komar: %v\n", err)
+			return exitFailure
+		}
+	}
+	var endCode *int
+	if !stopped {
+		endCode = &code
+	}
+	if err := out.Write(endRecord(reason, endCode, totals)); err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
 	}
-	say(stderr, "komar: program exited with code %d\n", code)
+	if stopped {
+		say(stderr, "komar: stop condition reached, program terminated\n")
+	} else {
+		say(stderr, "komar: program exited with code %d\n", code)
+	}
 	return exitOK
 }
 
-func forwardSignals(proc *launch.Process) func() string {
+func await(proc *launch.Process, srv *server.Server, stop spec.Stop) (string, bool) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
-	got := make(chan struct{})
-	go func() {
-		for sig := range signals {
-			select {
-			case <-got:
-			default:
-				close(got)
-			}
-			proc.Signal(sig)
-		}
-	}()
-	return func() string {
-		signal.Stop(signals)
+	defer signal.Stop(signals)
+	var timeout <-chan time.Time
+	if stop.After > 0 {
+		timer := time.NewTimer(stop.After)
+		defer timer.Stop()
+		timeout = timer.C
+	}
+	reason := reasonExit
+	for {
 		select {
-		case <-got:
-			return "signal"
-		default:
-			return "exit"
+		case <-proc.Done():
+			return reason, false
+		case sig := <-signals:
+			reason = reasonSignal
+			proc.Signal(sig)
+		case <-timeout:
+			proc.Terminate(stopGrace)
+			return reasonStop, true
+		case <-srv.LimitReached():
+			proc.Terminate(stopGrace)
+			return reasonStop, true
 		}
 	}
+}
+
+type diagRec struct {
+	Kind  string `json:"kind"`
+	Level string `json:"level"`
+	Probe string `json:"probe,omitempty"`
+	Msg   string `json:"msg"`
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 type runRec struct {
@@ -226,7 +271,7 @@ type runRec struct {
 type endRec struct {
 	Kind       string           `json:"kind"`
 	Reason     string           `json:"reason"`
-	Code       int              `json:"code"`
+	Code       *int             `json:"code"`
 	Hits       map[string]int   `json:"hits"`
 	Dropped    int64            `json:"dropped"`
 	WhenErrors map[string]int64 `json:"when_errors"`
@@ -243,7 +288,7 @@ func runRecord(ra runArgs, s *spec.Spec) runRec {
 	}
 }
 
-func endRecord(reason string, code int, t server.Totals) endRec {
+func endRecord(reason string, code *int, t server.Totals) endRec {
 	return endRec{
 		Kind: "end", Reason: reason, Code: code,
 		Hits: t.Hits, Dropped: t.Dropped, WhenErrors: t.WhenErrors,

@@ -127,5 +127,5 @@ probes:
 {"kind":"hit","probe":"varargs","point":"entry","method":"Main.send(String, Object[])","call":10,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
 {"kind":"diag","level":"info","probe":"typevar","msg":"placed","class":"Main$Box","methods":1,"pid":1}
 {"kind":"hit","probe":"typevar","point":"entry","method":"Main$Box.put(Object)","call":11,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"args":["k"]}}
-{"kind":"diag","level":"error","probe":"nomatch","msg":"no method send with params [long] matched in Main","pid":1}
+{"kind":"diag","level":"error","probe":"nomatch","msg":"no method send with params [long] matched in Main"}
 {"kind":"end","reason":"exit","code":0,"hits":{"all":10,"ambiguous":2,"arrays":1,"arrays2":1,"boxed":1,"empty":1,"generic":1,"primitive":1,"qualified":1,"simple":1,"typevar":1,"varargs":1},"dropped":0,"when_errors":{}}

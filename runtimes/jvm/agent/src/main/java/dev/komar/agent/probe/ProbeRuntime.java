@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
@@ -29,7 +30,6 @@ final class ProbeRuntime {
     private final AtomicInteger hits = new AtomicInteger();
     private final AtomicInteger methods = new AtomicInteger();
     private final Set<String> classes = ConcurrentHashMap.newKeySet();
-    private final Set<String> skipped = ConcurrentHashMap.newKeySet();
     private final Set<Integer> placedLines = ConcurrentHashMap.newKeySet();
     private final AtomicInteger placedCalls = new AtomicInteger();
     private final NamePattern callClass;
@@ -44,6 +44,7 @@ final class ProbeRuntime {
     private volatile boolean abstractSeen;
     private volatile boolean noLineTable;
     private volatile boolean interfaceTarget;
+    private final AtomicBoolean switchedOff = new AtomicBoolean();
 
     ProbeRuntime(ProbeSpec spec, CelEngine cel) {
         this.spec = spec;
@@ -74,7 +75,7 @@ final class ProbeRuntime {
     }
 
     boolean fires(Event e) {
-        if (spec.isCall() != e.isCallSite()) {
+        if (switchedOff.get() || spec.isCall() != e.isCallSite()) {
             return false;
         }
         if (Points.LINE.equals(e.point())) {
@@ -230,15 +231,18 @@ final class ProbeRuntime {
         return out;
     }
 
-    boolean admitClass(String name, Recorder recorder) {
+    synchronized boolean admitClass(String name, Recorder recorder) {
+        if (switchedOff.get()) {
+            return false;
+        }
         if (classes.contains(name)) {
             return true;
         }
         if (classes.size() >= spec.limits().classes()) {
-            if (skipped.add(name)) {
-                recorder.diag("warn", id(), "class skipped: probe already matched " + spec.limits().classes()
-                        + " classes (limits.classes)", "class", name);
-            }
+            switchedOff.set(true);
+            recorder.diag("error", id(), "probe switched off: its where matched " + (classes.size() + 1)
+                    + " classes, more than limits.classes (" + spec.limits().classes()
+                    + "); narrow the class pattern or raise the limit", "class", name);
             return false;
         }
         classes.add(name);

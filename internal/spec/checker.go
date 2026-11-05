@@ -45,7 +45,7 @@ func (c *checker) document(doc *yaml.Node) *Spec {
 		c.warn(top["calls"], `"calls: true" is not implemented yet; method calls in expressions are rejected`)
 	}
 	s.Limits = c.limits(top["limits"], s.Limits)
-	c.notYet(top["stop"], "stop")
+	s.Stop = c.stop(top["stop"])
 	c.notYet(top["jvm"], "jvm")
 	if top["probes"] == nil {
 		c.add(root, `missing required key "probes"`)

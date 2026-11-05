@@ -43,6 +43,9 @@ probes:
       - msg: exception.message
 -- expected.jsonl --
 {"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"warn","probe":"nulls","msg":"spec.yaml:4:11: probe \"nulls\": when uses ret, not available at entry; entry will never fire"}
+{"kind":"diag","level":"warn","probe":"slow","msg":"spec.yaml:8:11: probe \"slow\": when uses duration, not available at entry; entry will never fire"}
+{"kind":"diag","level":"warn","probe":"errs","msg":"spec.yaml:12:11: probe \"errs\": when uses exception, not available at exit; exit will never fire"}
 {"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
 {"kind":"diag","level":"info","probe":"nulls","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"slow","msg":"placed","class":"Main","methods":1,"pid":1}
