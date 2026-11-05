@@ -1,0 +1,49 @@
+# lambda bodies and anonymous class methods each get their own call id whose parent is the enclosing call, also when the lambda runs later on another thread
+exec javac --release 8 -Xlint:-options -g -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static Runnable pending;
+
+    static void handle(int n) {
+        int seen = n;
+        Runnable now = () -> {
+            int a = n + 1;
+        };
+        now.run();
+        Runnable anon = new Runnable() {
+            @Override
+            public void run() {
+                int b = n + 2;
+            }
+        };
+        anon.run();
+        pending = () -> {
+            int c = n + 3;
+        };
+    }
+
+    public static void main(String[] args) throws Exception {
+        handle(1);
+        Thread t = new Thread(pending, "later");
+        t.start();
+        t.join();
+    }
+}
+-- spec.yaml --
+probes:
+  - id: body
+    where: { class: Main, method: handle, line: [5, 7, 13, 18] }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"body","msg":"placed","class":"Main","methods":3,"pid":1}
+{"kind":"hit","probe":"body","point":"line","method":"Main.handle(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"body","point":"line","method":"Main.lambda$handle$N(int)","line":7,"enclosing":"Main.handle","call":2,"parent":1,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"diag","level":"info","probe":"body","msg":"placed","class":"Main$1","methods":2,"pid":1}
+{"kind":"hit","probe":"body","point":"line","method":"Main$1.run()","line":13,"enclosing":"Main.handle","call":3,"parent":1,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"body","point":"line","method":"Main.lambda$handle$N(int)","line":18,"enclosing":"Main.handle","call":4,"parent":null,"thread":{"id":2,"name":"later"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"end","reason":"exit","code":0,"hits":{"body":4},"dropped":0,"when_errors":{}}

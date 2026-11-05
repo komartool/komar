@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.method.MethodDescription;
@@ -73,7 +74,10 @@ public final class Placement {
         String previous = System.getProperty(property);
         System.setProperty(property, "true");
         try {
-            return new AgentBuilder.Default();
+            ByteBuddy byteBuddy = new ByteBuddy().ignore(ElementMatchers.<MethodDescription>isSynthetic()
+                    .and(ElementMatchers.not(ElementMatchers.nameStartsWith("lambda$")))
+                    .or(ElementMatchers.isDefaultFinalizer()));
+            return new AgentBuilder.Default(byteBuddy);
         } finally {
             if (previous == null) {
                 System.clearProperty(property);
