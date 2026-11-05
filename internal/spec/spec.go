@@ -25,13 +25,14 @@ type Probe struct {
 }
 
 type Expr struct {
-	Text   string
-	Line   int
-	Col    int
-	Quoted bool
-	Block  bool
-	Roots  []string
-	Vars   []string
+	Text       string
+	Line       int
+	Col        int
+	Quoted     bool
+	Block      bool
+	Roots      []string
+	Vars       []string
+	CallFields []string
 }
 
 type Where struct {
@@ -41,7 +42,16 @@ type Where struct {
 	Params   []string
 	HasParam bool
 	Lines    []int
+	Call     *CallTarget
 	At       []string
+}
+
+type CallTarget struct {
+	Class    string
+	Subtypes bool
+	Method   string
+	Params   []string
+	HasParam bool
 }
 
 type Item struct {

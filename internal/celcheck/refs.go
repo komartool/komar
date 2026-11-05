@@ -10,11 +10,12 @@ type refs struct {
 	builtins map[string]bool
 	roots    map[string]bool
 	vars     map[string]bool
+	calls    map[string]bool
 	methods  []string
 }
 
 func collect(e ast.Expr, builtins map[string]bool) *refs {
-	r := &refs{builtins: builtins, roots: map[string]bool{}, vars: map[string]bool{}}
+	r := &refs{builtins: builtins, roots: map[string]bool{}, vars: map[string]bool{}, calls: map[string]bool{}}
 	r.walk(e, map[string]bool{})
 	return r
 }
@@ -50,6 +51,9 @@ func (r *refs) selection(s ast.SelectExpr, scope map[string]bool) {
 	op := s.Operand()
 	if op.Kind() == ast.IdentKind && op.AsIdent() == RootVars && !scope[RootVars] {
 		r.vars[s.FieldName()] = true
+	}
+	if op.Kind() == ast.IdentKind && op.AsIdent() == RootCall && !scope[RootCall] {
+		r.calls[s.FieldName()] = true
 	}
 	r.walk(op, scope)
 }
@@ -93,6 +97,10 @@ func (r *refs) rootList() []string {
 
 func (r *refs) varList() []string {
 	return sorted(r.vars)
+}
+
+func (r *refs) callList() []string {
+	return sorted(r.calls)
 }
 
 func sorted(set map[string]bool) []string {

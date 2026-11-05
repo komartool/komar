@@ -6,16 +6,16 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.objectweb.asm.tree.LocalVariableNode;
 
-final class LineVars {
+final class BodyVars {
 
     private final Recorder recorder;
     private final Set<String> reported = ConcurrentHashMap.newKeySet();
 
-    LineVars(Recorder recorder) {
+    BodyVars(Recorder recorder) {
         this.recorder = recorder;
     }
 
-    void check(ProbeRuntime probe, Site site, int line, String[] locals, List<LocalVariableNode> table) {
+    void check(ProbeRuntime probe, Site site, String where, String[] locals, List<LocalVariableNode> table) {
         List<String> inScope = Arrays.asList(locals);
         for (String name : probe.expressions().referencedVars()) {
             if (site.hasVar(name) || inScope.contains(name) || declaredElsewhere(name, table)) {
@@ -25,7 +25,7 @@ final class LineVars {
                 String why = table == null || table.isEmpty()
                         ? "local variable names are missing: compiled without -g"
                         : "no variable named " + name + " in " + site.label();
-                recorder.diag("warn", probe.id(), "vars." + name + " is not available at line " + line
+                recorder.diag("warn", probe.id(), "vars." + name + " is not available at " + where
                         + ": " + why + "; items using it are left out and when is false");
             }
         }

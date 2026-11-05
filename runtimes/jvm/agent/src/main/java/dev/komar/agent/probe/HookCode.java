@@ -11,41 +11,52 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-final class LineHook {
+final class HookCode {
 
     static final int EXTRA_STACK = 10;
+    static final String HOOKS = Type.getInternalName(Hooks.class);
 
-    private static final String HOOKS = Type.getInternalName(Hooks.class);
     private static final String OBJECT = "java/lang/Object";
-    private static final String DESCRIPTOR = "(ILjava/lang/Object;[Ljava/lang/Object;[Ljava/lang/Object;)V";
+    private static final String LINE = "(ILjava/lang/Object;[Ljava/lang/Object;[Ljava/lang/Object;)V";
     private static final String[] BOXES = {
         null, "java/lang/Boolean", "java/lang/Character", "java/lang/Byte", "java/lang/Short",
         "java/lang/Integer", "java/lang/Float", "java/lang/Long", "java/lang/Double",
     };
 
-    private LineHook() {
+    private HookCode() {
     }
 
-    static InsnList call(int pointId, boolean loadThis, Type[] params, int firstParamSlot,
-                         List<LocalVariableNode> locals) {
+    static InsnList line(int pointId, Frame frame) {
+        InsnList out = prefix(pointId, frame);
+        out.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, "line", LINE, false));
+        return out;
+    }
+
+    static InsnList prefix(int pointId, Frame frame) {
         InsnList out = new InsnList();
         out.add(new LdcInsnNode(pointId));
-        out.add(loadThis ? new VarInsnNode(Opcodes.ALOAD, 0) : new InsnNode(Opcodes.ACONST_NULL));
-        out.add(params(params, firstParamSlot));
-        out.add(locals(locals));
-        out.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, "line", DESCRIPTOR, false));
+        out.add(frame.thisReady() ? new VarInsnNode(Opcodes.ALOAD, 0) : new InsnNode(Opcodes.ACONST_NULL));
+        out.add(array(frame.params(), frame.paramSlots()));
+        out.add(locals(frame.locals()));
         return out;
     }
 
-    private static InsnList params(Type[] params, int firstSlot) {
+    static InsnList array(Type[] types, int[] slots) {
         InsnList out = new InsnList();
-        newArray(out, params.length);
-        int slot = firstSlot;
-        for (int i = 0; i < params.length; i++) {
-            store(out, i, params[i], slot);
-            slot += params[i].getSize();
+        newArray(out, types.length);
+        for (int i = 0; i < types.length; i++) {
+            store(out, i, types[i], slots[i]);
         }
         return out;
+    }
+
+    static void box(InsnList out, Type type) {
+        int sort = type.getSort();
+        if (sort >= Type.BOOLEAN && sort <= Type.DOUBLE) {
+            String owner = BOXES[sort];
+            String desc = "(" + type.getDescriptor() + ")L" + owner + ";";
+            out.add(new MethodInsnNode(Opcodes.INVOKESTATIC, owner, "valueOf", desc, false));
+        }
     }
 
     private static InsnList locals(List<LocalVariableNode> locals) {
@@ -69,18 +80,5 @@ final class LineHook {
         out.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), slot));
         box(out, type);
         out.add(new InsnNode(Opcodes.AASTORE));
-    }
-
-    private static void box(InsnList out, Type type) {
-        String owner = boxType(type);
-        if (owner != null) {
-            String desc = "(" + type.getDescriptor() + ")L" + owner + ";";
-            out.add(new MethodInsnNode(Opcodes.INVOKESTATIC, owner, "valueOf", desc, false));
-        }
-    }
-
-    private static String boxType(Type type) {
-        int sort = type.getSort();
-        return sort >= Type.BOOLEAN && sort <= Type.DOUBLE ? BOXES[sort] : null;
     }
 }

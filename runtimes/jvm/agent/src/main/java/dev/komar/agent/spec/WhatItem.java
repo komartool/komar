@@ -9,12 +9,14 @@ public final class WhatItem {
     private final String expr;
     private final List<String> roots;
     private final List<String> vars;
+    private final List<String> callFields;
 
     private WhatItem(Node n) {
         this.key = n.string("key");
         this.expr = n.string("expr");
         this.roots = listOrEmpty(n.strings("roots"));
         this.vars = listOrEmpty(n.strings("vars"));
+        this.callFields = listOrEmpty(n.strings("call_fields"));
     }
 
     static WhatItem from(Node n) {
@@ -39,5 +41,9 @@ public final class WhatItem {
 
     public List<String> vars() {
         return vars;
+    }
+
+    public List<String> callFields() {
+        return callFields;
     }
 }

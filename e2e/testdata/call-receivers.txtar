@@ -1,0 +1,79 @@
+# the call target matches the receiver's run-time class: exact class only, subtypes for any implementation, a base class misses its subclass, an interface without subtypes warns and never fires
+exec javac --release 8 -Xlint:-options -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    interface Gateway {
+        String send(String msg);
+    }
+
+    static class Stripe implements Gateway {
+        public String send(String msg) {
+            return "stripe";
+        }
+    }
+
+    static class Paypal implements Gateway {
+        public String send(String msg) {
+            return "paypal";
+        }
+    }
+
+    static class Base {
+        int size() {
+            return 1;
+        }
+    }
+
+    static class Sub extends Base {
+        @Override
+        int size() {
+            return 2;
+        }
+    }
+
+    static void pay(Gateway[] gateways, Base b) {
+        for (Gateway g : gateways) {
+            g.send("x");
+        }
+        b.size();
+    }
+
+    public static void main(String[] args) {
+        pay(new Gateway[] {new Stripe(), new Paypal(), new Stripe()}, new Sub());
+    }
+}
+-- spec.yaml --
+probes:
+  - id: stripe_only
+    where: { class: Main, method: pay, call: { class: 'Main$Stripe', method: send }, at: [after] }
+    what: [ret]
+  - id: any_gateway
+    where: { class: Main, method: pay, call: { class: 'Main$Gateway', subtypes: true, method: send }, at: [after] }
+    what: [ret]
+  - id: base_exact
+    where: { class: Main, method: pay, call: { class: 'Main$Base', method: size }, at: [after] }
+  - id: base_subtypes
+    where: { class: Main, method: pay, call: { class: 'Main$Base', subtypes: true, method: size }, at: [after] }
+    what: [ret]
+  - id: interface_only
+    where: { class: Main, method: pay, call: { class: 'Main$Gateway', method: send } }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"stripe_only","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"any_gateway","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"base_exact","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"base_subtypes","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"interface_only","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"stripe_only","point":"after","method":"Main.pay(Gateway[], Base)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"paypal"}}
+{"kind":"hit","probe":"stripe_only","point":"after","method":"Main.pay(Gateway[], Base)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"base_subtypes","point":"after","method":"Main.pay(Gateway[], Base)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
+{"kind":"diag","level":"warn","probe":"interface_only","msg":"call target Main$Gateway is an interface and can never be the run-time class of the receiver; use subtypes: true","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"any_gateway":3,"base_subtypes":1,"stripe_only":2},"dropped":0,"when_errors":{}}

@@ -41,21 +41,32 @@ type sessionProbe struct {
 	Method   string        `json:"method"`
 	Params   []string      `json:"params"`
 	Lines    []int         `json:"lines"`
+	Call     *sessionCall  `json:"call"`
 	At       []string      `json:"at"`
 	When     *sessionItem  `json:"when"`
 	What     []sessionItem `json:"what"`
 	Limits   spec.Limits   `json:"limits"`
 }
 
+type sessionCall struct {
+	Class    string   `json:"class"`
+	Subtypes bool     `json:"subtypes"`
+	Method   string   `json:"method"`
+	Params   []string `json:"params"`
+}
+
 type sessionItem struct {
-	Key   string   `json:"key"`
-	Expr  string   `json:"expr"`
-	Roots []string `json:"roots"`
-	Vars  []string `json:"vars"`
+	Key        string   `json:"key"`
+	Expr       string   `json:"expr"`
+	Roots      []string `json:"roots"`
+	Vars       []string `json:"vars"`
+	CallFields []string `json:"call_fields"`
 }
 
 func item(key string, e spec.Expr) sessionItem {
-	return sessionItem{Key: key, Expr: e.Text, Roots: nonNil(e.Roots), Vars: nonNil(e.Vars)}
+	return sessionItem{
+		Key: key, Expr: e.Text, Roots: nonNil(e.Roots), Vars: nonNil(e.Vars), CallFields: nonNil(e.CallFields),
+	}
 }
 
 func nonNil(s []string) []string {
@@ -74,6 +85,12 @@ func encodeSession(host string, port int, s *spec.Spec) ([]byte, error) {
 		}
 		if p.Where.HasParam {
 			sp.Params = append([]string{}, p.Where.Params...)
+		}
+		if c := p.Where.Call; c != nil {
+			sp.Call = &sessionCall{Class: c.Class, Subtypes: c.Subtypes, Method: c.Method}
+			if c.HasParam {
+				sp.Call.Params = append([]string{}, c.Params...)
+			}
 		}
 		if p.When != nil {
 			w := item("when", *p.When)

@@ -1,0 +1,33 @@
+# call-site mistakes are reported before launch: method points on a call site, call names outside call sites, unknown call fields, mixing line and call, ret at before
+exec-status 2 komar run spec.yaml -o out.jsonl -- java -version
+cmp stderr expected.stderr
+! exists out.jsonl
+
+exec komar run warn.yaml -o warn.jsonl -- java -version
+stderr 'komar: warning: warn.yaml:4:11: probe "w": when uses ret, not available at before; before will never fire'
+
+-- spec.yaml --
+probes:
+  - id: a
+    where: { class: Main, method: run, call: { class: G, method: send }, at: [entry, after] }
+    what: [call.args, call.foo]
+  - id: b
+    where: { class: Main, method: run, at: [entry] }
+    what: [call.args]
+  - id: c
+    where: { class: Main, method: run, line: [3], call: { class: G, method: send } }
+  - id: d
+    where: { class: Main, method: run, call: { class: G, mthod: send } }
+-- warn.yaml --
+probes:
+  - id: w
+    where: { class: Main, method: run, call: { class: G, method: send }, at: [before, after] }
+    when: 'ret != null'
+-- expected.stderr --
+komar: spec.yaml:3:79: probe "a": unknown point "entry"; allowed: [before after exception]
+komar: spec.yaml:9:57: probe "c": a probe has one kind; use "line" or "call", not both
+komar: spec.yaml:11:58: unknown key "mthod" in call (did you mean "method"?)
+komar: spec.yaml:11:46: probe "d": where has no "method"
+komar: spec.yaml:4:23: probe "a": what "call.foo": call.foo does not exist; use call.target or call.args
+komar: spec.yaml:7:12: probe "b": what "call.args": call.target and call.args exist only in call-site probes; a program name call is vars.call
+komar: 6 errors, nothing started

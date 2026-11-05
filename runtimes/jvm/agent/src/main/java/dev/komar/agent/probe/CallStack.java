@@ -1,6 +1,8 @@
 package dev.komar.agent.probe;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 final class CallStack {
 
@@ -11,6 +13,7 @@ final class CallStack {
 
     private long[] ids = new long[INITIAL_CAPACITY];
     private long[] starts = new long[INITIAL_CAPACITY];
+    private final List<Pending> pending = new ArrayList<>();
     private int size;
     private boolean busy;
 
@@ -20,6 +23,19 @@ final class CallStack {
 
     long top() {
         return size == 0 ? 0L : ids[size - 1];
+    }
+
+    void pushPending(Pending p) {
+        pending.add(p);
+    }
+
+    Pending popPending(long token) {
+        for (int i = pending.size() - 1; i >= 0; i--) {
+            if (pending.get(i).token() == token) {
+                return pending.remove(i);
+            }
+        }
+        return null;
     }
 
     long parentOfTop() {

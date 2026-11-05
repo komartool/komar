@@ -6,6 +6,8 @@ final class Points {
     static final String EXIT = "exit";
     static final String EXCEPTION = "exception";
     static final String LINE = "line";
+    static final String BEFORE = "before";
+    static final String AFTER = "after";
 
     private Points() {
     }

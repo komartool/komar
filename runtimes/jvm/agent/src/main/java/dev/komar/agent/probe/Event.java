@@ -1,5 +1,7 @@
 package dev.komar.agent.probe;
 
+import java.util.Map;
+
 final class Event {
 
     private final String point;
@@ -12,7 +14,10 @@ final class Event {
     private Throwable thrown;
     private double durationMs = Double.NaN;
     private int line;
-    private java.util.Map<String, Object> locals;
+    private Map<String, Object> locals;
+    private boolean callSite;
+    private Object target;
+    private Object[] callArgs;
 
     Event(String point, long call, long parent, Object self, Object[] args) {
         this.point = point;
@@ -33,23 +38,30 @@ final class Event {
         return this;
     }
 
-    Event atLine(int number, java.util.Map<String, Object> values) {
+    Event took(double ms) {
+        this.durationMs = ms;
+        return this;
+    }
+
+    Event atLine(int number) {
         this.line = number;
+        return this;
+    }
+
+    Event withLocals(Map<String, Object> values) {
         this.locals = values;
         return this;
     }
 
-    int line() {
-        return line;
-    }
-
-    java.util.Map<String, Object> locals() {
-        return locals;
-    }
-
-    Event took(double ms) {
-        this.durationMs = ms;
+    Event calling(Object receiver, Object[] values) {
+        this.callSite = true;
+        this.target = receiver;
+        this.callArgs = values;
         return this;
+    }
+
+    Event next(String nextPoint) {
+        return new Event(nextPoint, call, parent, self, args).withLocals(locals).calling(target, callArgs);
     }
 
     String point() {
@@ -86,5 +98,25 @@ final class Event {
 
     double durationMs() {
         return durationMs;
+    }
+
+    int line() {
+        return line;
+    }
+
+    Map<String, Object> locals() {
+        return locals;
+    }
+
+    boolean isCallSite() {
+        return callSite;
+    }
+
+    Object target() {
+        return target;
+    }
+
+    Object[] callArgs() {
+        return callArgs;
     }
 }

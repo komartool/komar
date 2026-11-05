@@ -1,8 +1,11 @@
 package dev.komar.agent.probe;
 
 import dev.komar.agent.cel.CelEngine;
+import dev.komar.agent.spec.CallSpec;
 import dev.komar.agent.spec.ProbeSpec;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -12,6 +15,9 @@ import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.MethodInsnNode;
 
 final class ProbeRuntime {
 
@@ -25,9 +31,19 @@ final class ProbeRuntime {
     private final Set<String> classes = ConcurrentHashMap.newKeySet();
     private final Set<String> skipped = ConcurrentHashMap.newKeySet();
     private final Set<Integer> placedLines = ConcurrentHashMap.newKeySet();
+    private final AtomicInteger placedCalls = new AtomicInteger();
+    private final NamePattern callClass;
+    private final NamePattern callMethod;
+    private final ClassValue<Boolean> receivers = new ClassValue<Boolean>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            return receiverMatches(type);
+        }
+    };
     private volatile boolean typeSeen;
     private volatile boolean abstractSeen;
     private volatile boolean noLineTable;
+    private volatile boolean interfaceTarget;
 
     ProbeRuntime(ProbeSpec spec, CelEngine cel) {
         this.spec = spec;
@@ -36,6 +52,9 @@ final class ProbeRuntime {
         this.methodPattern = new NamePattern(spec.method());
         ElementMatcher<TypeDescription> named = td -> classPattern.matchesClass(td.getName());
         this.typeMatcher = spec.subtypes() ? ElementMatchers.hasSuperType(named) : named;
+        CallSpec call = spec.call();
+        this.callClass = call == null ? null : new NamePattern(call.classPattern());
+        this.callMethod = call == null ? null : new NamePattern(call.method());
     }
 
     ProbeSpec spec() {
@@ -55,14 +74,64 @@ final class ProbeRuntime {
     }
 
     boolean fires(Event e) {
-        if (Points.LINE.equals(e.point())) {
-            return spec.lines().contains(e.line());
+        if (spec.isCall() != e.isCallSite()) {
+            return false;
         }
-        return wants(e.point());
+        if (Points.LINE.equals(e.point())) {
+            return spec.isLine() && spec.lines().contains(e.line());
+        }
+        return !spec.isLine() && wants(e.point());
+    }
+
+    boolean matchesCallInsn(MethodInsnNode insn) {
+        CallSpec call = spec.call();
+        if (!callMethod.matches(insn.name)) {
+            return false;
+        }
+        if (call.params() != null && !CallParams.match(call.params(), Type.getArgumentTypes(insn.desc))) {
+            return false;
+        }
+        String owner = insn.owner.replace('/', '.');
+        if (insn.getOpcode() == Opcodes.INVOKESTATIC) {
+            return callClass.matchesClass(owner);
+        }
+        if (insn.itf && !call.subtypes() && callClass.matchesClass(owner)) {
+            interfaceTarget = true;
+        }
+        return true;
+    }
+
+    boolean matchesReceiver(Class<?> type) {
+        return receivers.get(type);
+    }
+
+    private boolean receiverMatches(Class<?> type) {
+        if (!spec.call().subtypes()) {
+            return callClass.matchesClass(type.getName());
+        }
+        Deque<Class<?>> todo = new ArrayDeque<>();
+        todo.push(type);
+        while (!todo.isEmpty()) {
+            Class<?> c = todo.pop();
+            if (callClass.matchesClass(c.getName())) {
+                return true;
+            }
+            if (c.getSuperclass() != null) {
+                todo.push(c.getSuperclass());
+            }
+            for (Class<?> i : c.getInterfaces()) {
+                todo.push(i);
+            }
+        }
+        return false;
+    }
+
+    void placedCall() {
+        placedCalls.incrementAndGet();
     }
 
     boolean matchesType(TypeDescription td) {
-        boolean matched = typeMatcher.matches(td) || (spec.isLine() && insideTarget(td));
+        boolean matched = typeMatcher.matches(td) || (spec.isBody() && insideTarget(td));
         if (matched) {
             typeSeen = true;
             abstractSeen |= td.isInterface() || td.isAbstract();
@@ -74,7 +143,7 @@ final class ProbeRuntime {
         if (m.isAbstract() || m.isNative() || m.isBridge() || m.isTypeInitializer()) {
             return false;
         }
-        if (spec.isLine() && (insideTarget(td) || isTargetLambda(m))) {
+        if (spec.isBody() && (insideTarget(td) || isTargetLambda(m))) {
             return true;
         }
         return !m.isSynthetic() && matchesDeclared(m);
@@ -116,7 +185,31 @@ final class ProbeRuntime {
         noLineTable = true;
     }
 
-    List<String> lineProblems() {
+    List<String> bodyProblems() {
+        if (spec.isCall()) {
+            return callProblems();
+        }
+        return lineProblems();
+    }
+
+    private List<String> callProblems() {
+        List<String> out = new ArrayList<>();
+        if (methods.get() == 0) {
+            return out;
+        }
+        String target = spec.call().classPattern() + "." + spec.call().method();
+        if (interfaceTarget) {
+            out.add("call target " + spec.call().classPattern() + " is an interface and can never be the run-time"
+                    + " class of the receiver; use subtypes: true");
+        }
+        if (placedCalls.get() == 0) {
+            out.add("no call to " + target + " found in " + methodPattern
+                    + " or its lambdas and local classes");
+        }
+        return out;
+    }
+
+    private List<String> lineProblems() {
         List<String> out = new ArrayList<>();
         if (!spec.isLine() || methods.get() == 0) {
             return out;

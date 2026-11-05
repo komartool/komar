@@ -11,6 +11,8 @@ const (
 	PointExit      = "exit"
 	PointException = "exception"
 	PointLine      = "line"
+	PointBefore    = "before"
+	PointAfter     = "after"
 
 	Constructor      = "new"
 	constructorAlias = "<init>"
@@ -18,8 +20,10 @@ const (
 
 var (
 	whereKeys    = []string{"class", "subtypes", "method", "params", "at", "line", "call"}
+	callKeys     = []string{"class", "subtypes", "method", "params"}
 	methodPoints = []string{PointEntry, PointExit, PointException}
 	ctorPoints   = []string{PointEntry, PointExit}
+	callPoints   = []string{PointBefore, PointAfter, PointException}
 )
 
 func (c *checker) where(n *yaml.Node, id string) Where {
@@ -36,11 +40,17 @@ func (c *checker) where(n *yaml.Node, id string) Where {
 	if w.Method == constructorAlias {
 		w.Method = Constructor
 	}
-	if values["call"] != nil {
-		c.add(values["call"], "probe %q: \"call\" probes are not implemented yet", id)
-	}
 	if params := values["params"]; params != nil {
 		w.Params, w.HasParam = c.stringList(params, id, "params"), true
+	}
+	if values["line"] != nil && values["call"] != nil {
+		c.add(values["call"], "probe %q: a probe has one kind; use \"line\" or \"call\", not both", id)
+		return w
+	}
+	if call := values["call"]; call != nil {
+		w.Call = c.callTarget(call, id)
+		w.At = c.points(values["at"], id, callPoints, false)
+		return w
 	}
 	if line := values["line"]; line != nil {
 		w.Lines = c.lines(line, id)
@@ -50,8 +60,32 @@ func (c *checker) where(n *yaml.Node, id string) Where {
 		}
 		return w
 	}
-	w.At = c.points(values["at"], id, w.Method == Constructor)
+	allowed := methodPoints
+	if w.Method == Constructor {
+		allowed = ctorPoints
+	}
+	w.At = c.points(values["at"], id, allowed, w.Method == Constructor)
 	return w
+}
+
+func (c *checker) callTarget(n *yaml.Node, id string) *CallTarget {
+	if n.Kind != yaml.MappingNode {
+		c.add(n, "probe %q: \"call\" must be a map with class and method", id)
+		return nil
+	}
+	values := c.mapping(n, callKeys, " in call")
+	t := &CallTarget{
+		Class:    c.requiredString(n, values["class"], id, "class"),
+		Subtypes: c.boolean(values["subtypes"], "subtypes"),
+		Method:   c.requiredString(n, values["method"], id, "method"),
+	}
+	if t.Method == Constructor || t.Method == constructorAlias {
+		c.add(values["method"], "probe %q: calls to constructors are not implemented yet", id)
+	}
+	if params := values["params"]; params != nil {
+		t.Params, t.HasParam = c.stringList(params, id, "params"), true
+	}
+	return t
 }
 
 func (c *checker) lines(n *yaml.Node, id string) []int {
@@ -102,11 +136,7 @@ func (c *checker) stringList(n *yaml.Node, id, key string) []string {
 	return out
 }
 
-func (c *checker) points(n *yaml.Node, id string, ctor bool) []string {
-	allowed := methodPoints
-	if ctor {
-		allowed = ctorPoints
-	}
+func (c *checker) points(n *yaml.Node, id string, allowed []string, ctor bool) []string {
 	if n == nil {
 		return append([]string(nil), allowed...)
 	}

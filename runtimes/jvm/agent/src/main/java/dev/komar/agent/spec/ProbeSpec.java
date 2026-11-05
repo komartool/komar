@@ -17,6 +17,7 @@ public final class ProbeSpec {
     private final List<String> params;
     private final Set<String> at;
     private final Set<Integer> lines;
+    private final CallSpec call;
     private final WhatItem when;
     private final List<WhatItem> what;
     private final Limits limits;
@@ -30,6 +31,7 @@ public final class ProbeSpec {
         this.params = p == null ? null : Collections.unmodifiableList(p);
         this.at = Collections.unmodifiableSet(new LinkedHashSet<>(n.strings("at")));
         this.lines = Collections.unmodifiableSet(new LinkedHashSet<>(n.integers("lines")));
+        this.call = n.has("call") ? CallSpec.from(n.node("call")) : null;
         this.when = n.has("when") ? WhatItem.from(n.node("when")) : null;
         List<WhatItem> items = new ArrayList<>();
         for (Node item : n.nodes("what")) {
@@ -77,6 +79,18 @@ public final class ProbeSpec {
 
     public boolean isLine() {
         return !lines.isEmpty();
+    }
+
+    public CallSpec call() {
+        return call;
+    }
+
+    public boolean isCall() {
+        return call != null;
+    }
+
+    public boolean isBody() {
+        return isLine() || isCall();
     }
 
     public WhatItem when() {

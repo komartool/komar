@@ -26,7 +26,7 @@ public final class Placement {
     private final Recorder recorder;
     private final List<ProbeRuntime> probes = new ArrayList<>();
     private final Engine engine;
-    private final LineVars lineVars;
+    private final BodyVars bodyVars;
     private final Set<String> failedTypes = ConcurrentHashMap.newKeySet();
 
     private Placement(SessionSpec spec, Recorder recorder) {
@@ -36,7 +36,7 @@ public final class Placement {
             probes.add(new ProbeRuntime(p, cel));
         }
         this.engine = new Engine(recorder, probes);
-        this.lineVars = new LineVars(recorder);
+        this.bodyVars = new BodyVars(recorder);
     }
 
     public static Placement install(Instrumentation inst, SessionSpec spec, Recorder recorder) {
@@ -109,40 +109,40 @@ public final class Placement {
             }
         }
         int[] counts = new int[forType.size()];
-        Map<String, MethodPlan> linePlans = new HashMap<>();
+        Map<String, MethodPlan> bodyPlans = new HashMap<>();
         for (MethodDescription.InDefinedShape m : td.getDeclaredMethods()) {
             List<ProbeRuntime> matched = new ArrayList<>();
-            List<ProbeRuntime> lineProbes = new ArrayList<>();
+            List<ProbeRuntime> bodyProbes = new ArrayList<>();
             for (int i = 0; i < forType.size(); i++) {
                 ProbeRuntime p = forType.get(i);
                 if (p.matchesMethod(td, m) && p.admitClass(td.getName(), recorder)) {
                     matched.add(p);
                     counts[i]++;
-                    if (p.spec().isLine()) {
-                        lineProbes.add(p);
+                    if (p.spec().isBody()) {
+                        bodyProbes.add(p);
                     }
                 }
             }
             if (matched.isEmpty()) {
                 continue;
             }
-            Site s = site(td, m, matched, !lineProbes.isEmpty());
+            Site s = site(td, m, matched, !bodyProbes.isEmpty());
             result = advise(result, m, s);
-            if (!lineProbes.isEmpty()) {
-                linePlans.put(m.getInternalName() + m.getDescriptor(), new MethodPlan(s, lineProbes));
+            if (!bodyProbes.isEmpty()) {
+                bodyPlans.put(m.getInternalName() + m.getDescriptor(), new MethodPlan(s, bodyProbes));
             }
         }
-        if (!linePlans.isEmpty()) {
-            result = result.visit(new LineWrapper(linePlans, engine, lineVars));
+        if (!bodyPlans.isEmpty()) {
+            result = result.visit(new BodyWrapper(bodyPlans, engine, bodyVars));
         }
         reportPlaced(td, forType, counts);
         return result;
     }
 
     private Site site(TypeDescription td, MethodDescription.InDefinedShape m, List<ProbeRuntime> matched,
-                      boolean hasLines) {
+                      boolean inBody) {
         boolean returnsValue = !m.isConstructor() && !m.getReturnType().represents(void.class);
-        String enclosing = hasLines ? Lambdas.enclosingLabel(td, m) : null;
+        String enclosing = inBody ? Lambdas.enclosingLabel(td, m) : null;
         Site s = new Site(label(td, m), enclosing, returnsValue, paramNames(m), matched);
         reportMissingVars(s, matched);
         return s;
@@ -168,7 +168,7 @@ public final class Placement {
 
     private void reportMissingVars(Site site, List<ProbeRuntime> matched) {
         for (ProbeRuntime p : matched) {
-            if (p.spec().isLine()) {
+            if (p.spec().isBody()) {
                 continue;
             }
             for (String name : p.expressions().referencedVars()) {

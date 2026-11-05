@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import org.objectweb.asm.tree.MethodInsnNode;
 
 final class MethodPlan {
 
@@ -20,13 +21,28 @@ final class MethodPlan {
         return site;
     }
 
-    List<ProbeRuntime> probes() {
-        return probes;
+    List<ProbeRuntime> lineProbes() {
+        List<ProbeRuntime> out = new ArrayList<>();
+        for (ProbeRuntime p : probes) {
+            if (p.spec().isLine()) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    boolean hasCalls() {
+        for (ProbeRuntime p : probes) {
+            if (p.spec().isCall()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     Set<Integer> lines() {
         Set<Integer> out = new TreeSet<>();
-        for (ProbeRuntime p : probes) {
+        for (ProbeRuntime p : lineProbes()) {
             out.addAll(p.spec().lines());
         }
         return out;
@@ -34,8 +50,18 @@ final class MethodPlan {
 
     List<ProbeRuntime> probesAt(int line) {
         List<ProbeRuntime> out = new ArrayList<>();
-        for (ProbeRuntime p : probes) {
+        for (ProbeRuntime p : lineProbes()) {
             if (p.spec().lines().contains(line)) {
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    List<ProbeRuntime> probesCalling(MethodInsnNode insn) {
+        List<ProbeRuntime> out = new ArrayList<>();
+        for (ProbeRuntime p : probes) {
+            if (p.spec().isCall() && p.matchesCallInsn(insn)) {
                 out.add(p);
             }
         }

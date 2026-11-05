@@ -11,21 +11,27 @@ import net.bytebuddy.pool.TypePool;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 
-final class LineWrapper implements AsmVisitorWrapper {
+final class BodyWrapper implements AsmVisitorWrapper {
 
     private final Map<String, MethodPlan> plans;
     private final Engine engine;
-    private final LineVars vars;
+    private final BodyVars vars;
+    private final boolean hasCalls;
 
-    LineWrapper(Map<String, MethodPlan> plans, Engine engine, LineVars vars) {
+    BodyWrapper(Map<String, MethodPlan> plans, Engine engine, BodyVars vars) {
         this.plans = plans;
         this.engine = engine;
         this.vars = vars;
+        boolean calls = false;
+        for (MethodPlan plan : plans.values()) {
+            calls |= plan.hasCalls();
+        }
+        this.hasCalls = calls;
     }
 
     @Override
     public int mergeWriter(int flags) {
-        return flags | ClassWriter.COMPUTE_MAXS;
+        return flags | ClassWriter.COMPUTE_MAXS | (hasCalls ? ClassWriter.COMPUTE_FRAMES : 0);
     }
 
     @Override
@@ -38,6 +44,6 @@ final class LineWrapper implements AsmVisitorWrapper {
                              Implementation.Context implementationContext, TypePool typePool,
                              FieldList<FieldDescription.InDefinedShape> fields, MethodList<?> methods,
                              int writerFlags, int readerFlags) {
-        return new LineRewriter(classVisitor, plans, engine, vars);
+        return new BodyRewriter(classVisitor, plans, engine, vars);
     }
 }

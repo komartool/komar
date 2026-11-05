@@ -14,7 +14,7 @@ import dev.cel.runtime.CelRuntimeFactory;
 
 public final class CelEngine {
 
-    private static final String[] ROOTS = {"this", "args", "vars", "ret", "exception", "duration"};
+    private static final String[] ROOTS = {"this", "args", "vars", "ret", "exception", "duration", "call"};
 
     private CelCompiler compiler;
     private CelRuntime runtime;
