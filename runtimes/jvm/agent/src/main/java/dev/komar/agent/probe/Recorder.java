@@ -3,7 +3,6 @@ package dev.komar.agent.probe;
 import dev.komar.agent.channel.Channel;
 import dev.komar.agent.json.JsonWriter;
 import java.lang.management.ManagementFactory;
-import java.time.Instant;
 import java.util.Map;
 
 public final class Recorder {
@@ -11,6 +10,7 @@ public final class Recorder {
     private final Channel channel;
     private final long pid;
     private final long startNanos = System.nanoTime();
+    private final Clock clock = new Clock();
 
     public Recorder(Channel channel) {
         this.channel = channel;
@@ -60,7 +60,7 @@ public final class Recorder {
                 .field("name", thread.getName())
                 .endObject()
                 .field("pid", pid)
-                .field("ts", Instant.now().toString())
+                .field("ts", clock.now())
                 .field("t", System.nanoTime() - startNanos)
                 .field("what", what);
         channel.send(out.endObject().toString());

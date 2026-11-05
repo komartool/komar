@@ -1,0 +1,6 @@
+limits: { max_hits: 100000000 }
+probes:
+  - id: l
+    where: { class: Bench, method: target, line: [34] }
+    what:
+      - result: vars.result

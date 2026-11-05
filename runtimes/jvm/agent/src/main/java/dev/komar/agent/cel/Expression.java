@@ -2,8 +2,8 @@ package dev.komar.agent.cel;
 
 import dev.cel.runtime.CelEvaluationException;
 import dev.cel.runtime.Program;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 public final class Expression {
@@ -22,12 +22,13 @@ public final class Expression {
     }
 
     public Object evaluate(Map<String, Object> roots) throws ExpressionException {
-        Map<String, Object> activation = new HashMap<>();
-        for (Map.Entry<String, Object> e : roots.entrySet()) {
-            activation.put(e.getKey(), CelValues.wrap(e.getValue()));
-        }
         try {
-            return CelValues.unwrap(program.eval(activation));
+            return CelValues.unwrap(program.eval(name -> {
+                Object value = roots.get(name);
+                return value == null && !roots.containsKey(name)
+                        ? Optional.empty()
+                        : Optional.of(CelValues.root(name, value));
+            }));
         } catch (CelEvaluationException | RuntimeException e) {
             throw new ExpressionException(message(e), e);
         }

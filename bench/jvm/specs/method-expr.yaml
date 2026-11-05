@@ -1,0 +1,8 @@
+limits: { max_hits: 100000000 }
+probes:
+  - id: m
+    where: { class: Bench, method: target, at: [entry] }
+    when: 'args[0].customer.vip'
+    what:
+      - total: args[0].total
+      - name: args[0].customer.name

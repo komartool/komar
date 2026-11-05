@@ -1,0 +1,4 @@
+limits: { max_hits: 100000000 }
+probes:
+  - id: c
+    where: { class: Bench, method: caller, call: { class: java.lang.Math, method: addExact }, at: [after] }

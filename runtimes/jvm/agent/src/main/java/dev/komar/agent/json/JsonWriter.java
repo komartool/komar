@@ -7,7 +7,9 @@ public final class JsonWriter {
 
     private static final char LAST_CONTROL_CHAR = 0x1f;
 
-    private final StringBuilder out = new StringBuilder();
+    private static final int INITIAL_CAPACITY = 512;
+
+    private final StringBuilder out = new StringBuilder(INITIAL_CAPACITY);
 
     public static String toJson(Object value) {
         return new JsonWriter().value(value).toString();
@@ -110,10 +112,23 @@ public final class JsonWriter {
 
     private void quote(String s) {
         out.append('"');
-        for (int i = 0; i < s.length(); i++) {
-            escape(s.charAt(i));
+        int plain = 0;
+        while (plain < s.length() && !needsEscape(s.charAt(plain))) {
+            plain++;
+        }
+        if (plain == s.length()) {
+            out.append(s);
+        } else {
+            out.append(s, 0, plain);
+            for (int i = plain; i < s.length(); i++) {
+                escape(s.charAt(i));
+            }
         }
         out.append('"');
+    }
+
+    private static boolean needsEscape(char c) {
+        return c <= LAST_CONTROL_CHAR || c == '"' || c == '\\';
     }
 
     private void escape(char c) {

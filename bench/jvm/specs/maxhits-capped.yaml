@@ -1,0 +1,4 @@
+probes:
+  - id: m
+    where: { class: Bench, method: target, at: [entry] }
+    what: [args]

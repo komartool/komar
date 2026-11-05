@@ -69,6 +69,13 @@ final class CelValues {
         return text(v);
     }
 
+    static Object root(String name, Object value) {
+        if (value instanceof Map && ("vars".equals(name) || "call".equals(name))) {
+            return new LazyMap((Map<?, ?>) value);
+        }
+        return wrap(value);
+    }
+
     private static Object text(Object v) {
         if (v instanceof CharSequence || v instanceof Character || v instanceof Enum) {
             return v instanceof Enum ? ((Enum<?>) v).name() : v.toString();
@@ -86,8 +93,15 @@ final class CelValues {
         if (v instanceof NullValue) {
             return null;
         }
+        return lazySource(v);
+    }
+
+    private static Object lazySource(Object v) {
         if (v instanceof LazyList) {
             return ((LazyList) v).source();
+        }
+        if (v instanceof LazyMap) {
+            return ((LazyMap) v).source();
         }
         return v instanceof List || v instanceof Map ? container(v) : v;
     }

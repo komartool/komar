@@ -1,0 +1,4 @@
+limits: { max_hits: 100000000 }
+probes:
+  - id: m
+    where: { class: Bench, method: target, at: [entry] }
