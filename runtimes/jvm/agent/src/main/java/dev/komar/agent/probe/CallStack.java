@@ -22,6 +22,10 @@ final class CallStack {
         return size == 0 ? 0L : ids[size - 1];
     }
 
+    long parentOfTop() {
+        return size < 2 ? 0L : ids[size - 2];
+    }
+
     void push(long id, long start) {
         if (size == ids.length) {
             ids = Arrays.copyOf(ids, size * 2);

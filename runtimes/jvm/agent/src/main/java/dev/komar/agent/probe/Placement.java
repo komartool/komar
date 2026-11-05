@@ -6,7 +6,9 @@ import dev.komar.agent.spec.SessionSpec;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -23,6 +25,7 @@ public final class Placement {
     private final Recorder recorder;
     private final List<ProbeRuntime> probes = new ArrayList<>();
     private final Engine engine;
+    private final LineVars lineVars;
     private final Set<String> failedTypes = ConcurrentHashMap.newKeySet();
 
     private Placement(SessionSpec spec, Recorder recorder) {
@@ -32,6 +35,7 @@ public final class Placement {
             probes.add(new ProbeRuntime(p, cel));
         }
         this.engine = new Engine(recorder, probes);
+        this.lineVars = new LineVars(recorder);
     }
 
     public static Placement install(Instrumentation inst, SessionSpec spec, Recorder recorder) {
@@ -101,28 +105,47 @@ public final class Placement {
             }
         }
         int[] counts = new int[forType.size()];
+        Map<String, MethodPlan> linePlans = new HashMap<>();
         for (MethodDescription.InDefinedShape m : td.getDeclaredMethods()) {
             List<ProbeRuntime> matched = new ArrayList<>();
+            List<ProbeRuntime> lineProbes = new ArrayList<>();
             for (int i = 0; i < forType.size(); i++) {
                 ProbeRuntime p = forType.get(i);
-                if (p.matchesMethod(m) && p.admitClass(td.getName(), recorder)) {
+                if (p.matchesMethod(td, m) && p.admitClass(td.getName(), recorder)) {
                     matched.add(p);
                     counts[i]++;
+                    if (p.spec().isLine()) {
+                        lineProbes.add(p);
+                    }
                 }
             }
-            if (!matched.isEmpty()) {
-                result = advise(result, td, m, matched);
+            if (matched.isEmpty()) {
+                continue;
             }
+            Site s = site(td, m, matched, !lineProbes.isEmpty());
+            result = advise(result, m, s);
+            if (!lineProbes.isEmpty()) {
+                linePlans.put(m.getInternalName() + m.getDescriptor(), new MethodPlan(s, lineProbes));
+            }
+        }
+        if (!linePlans.isEmpty()) {
+            result = result.visit(new LineWrapper(linePlans, engine, lineVars));
         }
         reportPlaced(td, forType, counts);
         return result;
     }
 
-    private DynamicType.Builder<?> advise(DynamicType.Builder<?> builder, TypeDescription td,
-                                          MethodDescription.InDefinedShape m, List<ProbeRuntime> matched) {
+    private Site site(TypeDescription td, MethodDescription.InDefinedShape m, List<ProbeRuntime> matched,
+                      boolean hasLines) {
         boolean returnsValue = !m.isConstructor() && !m.getReturnType().represents(void.class);
-        Site s = new Site(label(td, m), returnsValue, paramNames(m), matched);
+        String enclosing = hasLines ? Lambdas.enclosingLabel(td, m) : null;
+        Site s = new Site(label(td, m), enclosing, returnsValue, paramNames(m), matched);
         reportMissingVars(s, matched);
+        return s;
+    }
+
+    private DynamicType.Builder<?> advise(DynamicType.Builder<?> builder, MethodDescription.InDefinedShape m,
+                                          Site s) {
         int site = engine.register(s);
         Class<?> advice = m.isConstructor() ? ConstructorAdvice.class : MethodAdvice.class;
         return builder.visit(Advice.withCustomMapping()
@@ -141,6 +164,9 @@ public final class Placement {
 
     private void reportMissingVars(Site site, List<ProbeRuntime> matched) {
         for (ProbeRuntime p : matched) {
+            if (p.spec().isLine()) {
+                continue;
+            }
             for (String name : p.expressions().referencedVars()) {
                 if (site.hasVar(name)) {
                     continue;

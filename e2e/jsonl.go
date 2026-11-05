@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +14,8 @@ import (
 )
 
 const masked = "<masked>"
+
+var lambdaIndex = regexp.MustCompile(`(lambda\$[A-Za-z0-9_]+\$)[0-9]+`)
 
 var (
 	maskedStrings = []string{"komar", "jvm"}
@@ -76,6 +79,9 @@ func (n *normalizer) record(rec object) (object, error) {
 	rec = rec.without("seq").without("t")
 	if err := maskFields(rec); err != nil {
 		return nil, err
+	}
+	if method, ok := field(rec, "method").(string); ok {
+		rec.set("method", lambdaIndex.ReplaceAllString(method, "${1}N"))
 	}
 	pid := fmt.Sprint(field(rec, "pid"))
 	if _, ok := rec.get("pid"); ok {

@@ -7,12 +7,14 @@ import java.util.Map;
 final class Site {
 
     private final String label;
+    private final String enclosing;
     private final boolean returnsValue;
     private final String[] paramNames;
     private final List<ProbeRuntime> probes;
 
-    Site(String label, boolean returnsValue, String[] paramNames, List<ProbeRuntime> probes) {
+    Site(String label, String enclosing, boolean returnsValue, String[] paramNames, List<ProbeRuntime> probes) {
         this.label = label;
+        this.enclosing = enclosing;
         this.returnsValue = returnsValue;
         this.paramNames = paramNames.clone();
         this.probes = probes;
@@ -20,6 +22,10 @@ final class Site {
 
     String label() {
         return label;
+    }
+
+    String enclosing() {
+        return enclosing;
     }
 
     boolean returnsValue() {
@@ -46,15 +52,6 @@ final class Site {
             }
         }
         return false;
-    }
-
-    boolean hasVars(List<String> names) {
-        for (String name : names) {
-            if (!hasVar(name)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     boolean namesKnown() {

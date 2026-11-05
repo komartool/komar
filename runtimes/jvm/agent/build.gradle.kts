@@ -19,7 +19,8 @@ java {
 }
 
 dependencies {
-    implementation("net.bytebuddy:byte-buddy:1.18.17")
+    implementation("net.bytebuddy:byte-buddy-dep:1.18.17")
+    implementation("org.ow2.asm:asm-tree:9.11.1")
     implementation("dev.cel:compiler:0.15.0")
     implementation("dev.cel:runtime:0.15.0")
     compileOnly("com.github.spotbugs:spotbugs-annotations:4.10.5")
@@ -53,6 +54,7 @@ checkstyle {
 tasks.shadowJar {
     archiveFileName = "komar-agent.jar"
     relocate("net.bytebuddy", "dev.komar.shaded.bytebuddy")
+    relocate("org.objectweb.asm", "dev.komar.shaded.asm")
     relocate("dev.cel", "dev.komar.shaded.cel")
     relocate("cel.parser", "dev.komar.shaded.celparser")
     relocate("com.google", "dev.komar.shaded.google")

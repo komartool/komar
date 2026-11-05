@@ -1,0 +1,98 @@
+# lines inside lambdas, nested lambdas, anonymous classes and local classes loaded later belong to the method; records name the method that ran and the enclosing one
+exec javac --release 8 -Xlint:-options -g -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+import java.util.Arrays;
+import java.util.List;
+
+public class Main {
+    static void handle(List<Integer> xs) {
+        xs.forEach(x -> {
+            int sq = x * x;
+            xs.stream().filter(y -> {
+                int d = y - x;
+                return d > 0;
+            }).count();
+        });
+        Runnable r = new Runnable() {
+            @Override
+            public void run() {
+                int inner = 7;
+            }
+        };
+        r.run();
+        class Later {
+            int value(int v) {
+                int doubled = v * 2;
+                return doubled;
+            }
+        }
+        new Later().value(5);
+    }
+
+    static void other() {
+        Runnable r = () -> {
+            int unrelated = 1;
+        };
+        r.run();
+    }
+
+    public static void main(String[] args) {
+        handle(Arrays.asList(1, 2));
+        other();
+    }
+}
+-- spec.yaml --
+probes:
+  - id: lambda
+    where: { class: Main, method: handle, line: [7] }
+    what:
+      - x: vars.x
+      - sq: vars.sq
+  - id: nested
+    where: { class: Main, method: handle, line: [9] }
+    what:
+      - y: vars.y
+      - x: vars.x
+  - id: anon
+    where: { class: Main, method: handle, line: [16] }
+    what:
+      - inner: vars.inner
+  - id: local
+    where: { class: Main, method: handle, line: [22] }
+    what:
+      - doubled: vars.doubled
+      - v: vars.v
+  - id: not_other
+    where: { class: Main, method: handle, line: [31] }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"lambda","msg":"placed","class":"Main","methods":3,"pid":1}
+{"kind":"diag","level":"info","probe":"nested","msg":"placed","class":"Main","methods":3,"pid":1}
+{"kind":"diag","level":"info","probe":"anon","msg":"placed","class":"Main","methods":3,"pid":1}
+{"kind":"diag","level":"info","probe":"local","msg":"placed","class":"Main","methods":3,"pid":1}
+{"kind":"diag","level":"info","probe":"not_other","msg":"placed","class":"Main","methods":3,"pid":1}
+{"kind":"hit","probe":"lambda","point":"line","method":"Main.lambda$handle$N(List, Integer)","line":7,"enclosing":"Main.handle","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"x":1}}
+{"kind":"hit","probe":"nested","point":"line","method":"Main.lambda$handle$N(Integer, Integer)","line":9,"enclosing":"Main.handle","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"y":1,"x":1}}
+{"kind":"hit","probe":"nested","point":"line","method":"Main.lambda$handle$N(Integer, Integer)","line":9,"enclosing":"Main.handle","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"y":2,"x":1}}
+{"kind":"hit","probe":"lambda","point":"line","method":"Main.lambda$handle$N(List, Integer)","line":7,"enclosing":"Main.handle","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"x":2}}
+{"kind":"hit","probe":"nested","point":"line","method":"Main.lambda$handle$N(Integer, Integer)","line":9,"enclosing":"Main.handle","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"y":1,"x":2}}
+{"kind":"hit","probe":"nested","point":"line","method":"Main.lambda$handle$N(Integer, Integer)","line":9,"enclosing":"Main.handle","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"y":2,"x":2}}
+{"kind":"diag","level":"info","probe":"lambda","msg":"placed","class":"Main$1","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"nested","msg":"placed","class":"Main$1","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"anon","msg":"placed","class":"Main$1","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"local","msg":"placed","class":"Main$1","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"not_other","msg":"placed","class":"Main$1","methods":2,"pid":1}
+{"kind":"hit","probe":"anon","point":"line","method":"Main$1.run()","line":16,"enclosing":"Main.handle","call":2,"parent":1,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"diag","level":"info","probe":"lambda","msg":"placed","class":"Main$1Later","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"nested","msg":"placed","class":"Main$1Later","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"anon","msg":"placed","class":"Main$1Later","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"local","msg":"placed","class":"Main$1Later","methods":2,"pid":1}
+{"kind":"diag","level":"info","probe":"not_other","msg":"placed","class":"Main$1Later","methods":2,"pid":1}
+{"kind":"hit","probe":"local","point":"line","method":"Main$1Later.value(int)","line":22,"enclosing":"Main.handle","call":3,"parent":1,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"v":5}}
+{"kind":"diag","level":"warn","probe":"not_other","msg":"line 31 has no code in handle or its lambdas and local classes (blank line, comment, or outside the method)","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"anon":1,"lambda":2,"local":1,"nested":4},"dropped":0,"when_errors":{}}

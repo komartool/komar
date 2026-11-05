@@ -40,6 +40,7 @@ type Where struct {
 	Method   string
 	Params   []string
 	HasParam bool
+	Lines    []int
 	At       []string
 }
 

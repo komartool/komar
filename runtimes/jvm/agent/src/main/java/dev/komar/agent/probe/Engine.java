@@ -16,6 +16,7 @@ final class Engine {
     private final AtomicLong calls = new AtomicLong();
     private final AtomicBoolean failureReported = new AtomicBoolean();
     private volatile Site[] sites = new Site[0];
+    private volatile LinePoint[] lines = new LinePoint[0];
 
     Engine(Recorder recorder, List<ProbeRuntime> probes) {
         this.recorder = recorder;
@@ -27,6 +28,24 @@ final class Engine {
         next[sites.length] = site;
         sites = next;
         return sites.length - 1;
+    }
+
+    synchronized int registerLine(LinePoint point) {
+        LinePoint[] next = Arrays.copyOf(lines, lines.length + 1);
+        next[lines.length] = point;
+        lines = next;
+        return lines.length - 1;
+    }
+
+    void line(int pointId, Object self, Object[] args, Object[] locals) {
+        CallStack stack = CallStack.current();
+        if (stack.busy()) {
+            return;
+        }
+        LinePoint point = lines[pointId];
+        Event e = new Event(Points.LINE, stack.top(), stack.parentOfTop(), self, args)
+                .atLine(point.line(), point.locals(locals));
+        emit(stack, point.site(), e);
     }
 
     long enter(int siteId, Object self, Object[] args) {
@@ -77,6 +96,9 @@ final class Engine {
             if (reason != null) {
                 recorder.diag("error", p.id(), reason);
             }
+            for (String problem : p.lineProblems()) {
+                recorder.diag("warn", p.id(), problem);
+            }
             long errors = p.expressions().whenErrors();
             if (errors > 0) {
                 whenErrors.put(p.id(), errors);
@@ -90,7 +112,7 @@ final class Engine {
         try {
             Scope scope = new Scope(site, e);
             for (ProbeRuntime p : site.probes()) {
-                if (p.wants(e.point()) && p.expressions().test(site, scope, recorder) && p.admitHit(recorder)) {
+                if (p.fires(e) && p.expressions().test(site, scope, recorder) && p.admitHit(recorder)) {
                     recorder.hit(p, site, e, p.expressions().capture(site, scope));
                 }
             }

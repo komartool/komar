@@ -24,6 +24,18 @@ public final class Hooks {
         }
     }
 
+    public static void line(int point, Object self, Object[] args, Object[] locals) {
+        Engine e = engine;
+        if (e == null) {
+            return;
+        }
+        try {
+            e.line(point, self, args, locals);
+        } catch (RuntimeException | LinkageError | StackOverflowError err) {
+            e.failed(err);
+        }
+    }
+
     public static void exit(int site, long call, Object self, Object[] args, Object ret, Throwable thrown) {
         Engine e = engine;
         if (e == null || call == 0L) {

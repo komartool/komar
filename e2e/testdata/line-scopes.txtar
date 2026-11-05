@@ -1,0 +1,85 @@
+# locals appear only while in scope; catch lines fire only when caught; finally lines fire on both paths; static methods have no this; constructor lines see this after super()
+exec javac --release 8 -Xlint:-options -g -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    private final String name;
+
+    Main(String name) {
+        int len = name.length();
+        this.name = name;
+    }
+
+    static String risky(int x) {
+        String result = "start";
+        try {
+            if (x < 0) {
+                throw new IllegalStateException("neg");
+            }
+            result = "ok";
+        } catch (IllegalStateException e) {
+            result = "caught " + e.getMessage();
+        } finally {
+            result = result + "!";
+        }
+        if (x > 100) {
+            int big = x;
+            result = result + big;
+        }
+        return result;
+    }
+
+    public static void main(String[] args) {
+        new Main("ab");
+        risky(1);
+        risky(-1);
+        risky(200);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: ctor
+    where: { class: Main, method: new, line: [5, 6] }
+    what:
+      - len: vars.len
+      - name: vars.name
+      - this
+  - id: catch
+    where: { class: Main, method: risky, line: [17] }
+    what:
+      - x: vars.x
+      - e: vars.e.message
+  - id: finally
+    where: { class: Main, method: risky, line: [19] }
+    what:
+      - x: vars.x
+      - result: vars.result
+  - id: scope
+    where: { class: Main, method: risky, line: [21, 23, 25] }
+    what:
+      - big: vars.big
+      - this
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"ctor","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"catch","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"finally","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"scope","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"ctor","point":"line","method":"Main.new(String)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"name":"ab","this":{"@type":"Main","name":null}}}
+{"kind":"hit","probe":"ctor","point":"line","method":"Main.new(String)","line":6,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"len":2,"name":"ab","this":{"@type":"Main","name":null}}}
+{"kind":"hit","probe":"finally","point":"line","method":"Main.risky(int)","line":19,"call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"x":1,"result":"ok"}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":21,"call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":25,"call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"catch","point":"line","method":"Main.risky(int)","line":17,"call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"x":-1,"e":"neg"}}
+{"kind":"hit","probe":"finally","point":"line","method":"Main.risky(int)","line":19,"call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"x":-1,"result":"caught neg"}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":21,"call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":25,"call":3,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"finally","point":"line","method":"Main.risky(int)","line":19,"call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"x":200,"result":"ok"}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":21,"call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":23,"call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"big":200}}
+{"kind":"hit","probe":"scope","point":"line","method":"Main.risky(int)","line":25,"call":4,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{}}
+{"kind":"end","reason":"exit","code":0,"hits":{"catch":1,"ctor":2,"finally":3,"scope":7},"dropped":0,"when_errors":{}}

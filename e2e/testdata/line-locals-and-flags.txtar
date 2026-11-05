@@ -1,0 +1,74 @@
+# locals at a line need -g; -parameters gives only parameters; default javac leaves locals out with a diag; -g:none cannot place line probes
+exec javac --release 8 -Xlint:-options -g -d g Main.java
+exec komar run spec.yaml -o g.jsonl -- java -cp g Main
+jsonl-norm g.jsonl got.jsonl
+cmp got.jsonl g.expected
+
+exec javac --release 8 -Xlint:-options -parameters -d params Main.java
+exec komar run spec.yaml -o params.jsonl -- java -cp params Main
+jsonl-norm params.jsonl got.jsonl
+cmp got.jsonl params.expected
+
+exec javac --release 8 -Xlint:-options -g:none -d none Main.java
+exec komar run spec.yaml -o none.jsonl -- java -cp none Main
+jsonl-norm none.jsonl got.jsonl
+cmp got.jsonl none.expected
+
+-- Main.java --
+public class Main {
+    static int sum(int limit) {
+        int total = 0;
+        for (int i = 0; i < limit; i++) {
+            total += i;
+        }
+        return total;
+    }
+
+    public static void main(String[] args) {
+        sum(3);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: loop
+    where: { class: Main, method: sum, line: [5] }
+    what:
+      - limit: vars.limit
+      - i: vars.i
+      - total: vars.total
+  - id: even
+    where: { class: Main, method: sum, line: [5] }
+    when: 'vars.i % 2 == 0'
+    what:
+      - i: vars.i
+-- g.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","g","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"loop","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"even","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"loop","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"limit":3,"i":0,"total":0}}
+{"kind":"hit","probe":"even","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"i":0}}
+{"kind":"hit","probe":"loop","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"limit":3,"i":1,"total":0}}
+{"kind":"hit","probe":"loop","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"limit":3,"i":2,"total":1}}
+{"kind":"hit","probe":"even","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"i":2}}
+{"kind":"end","reason":"exit","code":0,"hits":{"even":2,"loop":3},"dropped":0,"when_errors":{}}
+-- params.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","params","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"loop","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"even","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"warn","probe":"loop","msg":"vars.i is not available at line 5: local variable names are missing: compiled without -g; items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"warn","probe":"loop","msg":"vars.total is not available at line 5: local variable names are missing: compiled without -g; items using it are left out and when is false","pid":1}
+{"kind":"diag","level":"warn","probe":"even","msg":"vars.i is not available at line 5: local variable names are missing: compiled without -g; items using it are left out and when is false","pid":1}
+{"kind":"hit","probe":"loop","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"limit":3}}
+{"kind":"hit","probe":"loop","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"limit":3}}
+{"kind":"hit","probe":"loop","point":"line","method":"Main.sum(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"limit":3}}
+{"kind":"end","reason":"exit","code":0,"hits":{"loop":3},"dropped":0,"when_errors":{}}
+-- none.expected --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","none","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"loop","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"info","probe":"even","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"diag","level":"warn","probe":"loop","msg":"cannot place line probe: Main has no line number table (compiled with -g:none)","pid":1}
+{"kind":"diag","level":"warn","probe":"even","msg":"cannot place line probe: Main has no line number table (compiled with -g:none)","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{},"dropped":0,"when_errors":{}}

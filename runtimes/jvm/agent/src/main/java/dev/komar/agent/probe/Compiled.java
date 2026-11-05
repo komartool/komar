@@ -60,7 +60,7 @@ final class Compiled {
     }
 
     boolean applies(Scope scope, Site site) {
-        return scope.hasAll(item.roots()) && site.hasVars(item.vars());
+        return scope.hasAll(item.roots()) && scope.hasVars(item.vars());
     }
 
     Object evaluate(Scope scope) throws ExpressionException {

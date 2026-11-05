@@ -40,6 +40,7 @@ type sessionProbe struct {
 	Subtypes bool          `json:"subtypes"`
 	Method   string        `json:"method"`
 	Params   []string      `json:"params"`
+	Lines    []int         `json:"lines"`
 	At       []string      `json:"at"`
 	When     *sessionItem  `json:"when"`
 	What     []sessionItem `json:"what"`
@@ -69,7 +70,7 @@ func encodeSession(host string, port int, s *spec.Spec) ([]byte, error) {
 	for _, p := range s.Probes {
 		sp := sessionProbe{
 			ID: p.ID, Class: p.Where.Class, Subtypes: p.Where.Subtypes, Method: p.Where.Method,
-			At: p.Where.At, Limits: p.Limits, What: make([]sessionItem, 0, len(p.What)),
+			At: p.Where.At, Lines: p.Where.Lines, Limits: p.Limits, What: make([]sessionItem, 0, len(p.What)),
 		}
 		if p.Where.HasParam {
 			sp.Params = append([]string{}, p.Where.Params...)

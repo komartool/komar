@@ -96,7 +96,7 @@ func Available(root, point string, ctor bool) bool {
 	case RootDuration:
 		return point == spec.PointExit || point == spec.PointException
 	case RootThis:
-		return !ctor || point != spec.PointEntry
+		return !ctor || point == spec.PointExit || point == spec.PointLine
 	}
 	return true
 }

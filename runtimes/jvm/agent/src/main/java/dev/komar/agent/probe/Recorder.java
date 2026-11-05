@@ -45,8 +45,14 @@ public final class Recorder {
                 .field("kind", "hit")
                 .field("probe", probe.id())
                 .field("point", e.point())
-                .field("method", site.label())
-                .field("call", e.call())
+                .field("method", site.label());
+        if (Points.LINE.equals(e.point())) {
+            out.field("line", (long) e.line());
+        }
+        if (site.enclosing() != null) {
+            out.field("enclosing", site.enclosing());
+        }
+        out.field("call", e.call() == 0L ? null : e.call())
                 .field("parent", e.parent() == 0L ? null : e.parent())
                 .name("thread").beginObject()
                 .field("id", thread.getId())

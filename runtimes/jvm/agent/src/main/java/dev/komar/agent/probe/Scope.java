@@ -8,12 +8,17 @@ import java.util.Map;
 final class Scope {
 
     private final Map<String, Object> values = new HashMap<>();
+    private final Map<String, Object> vars;
     private final Object[] args;
 
     Scope(Site site, Event e) {
         this.args = e.args();
+        this.vars = site.vars(e.args());
+        if (e.locals() != null) {
+            vars.putAll(e.locals());
+        }
         values.put("args", Arrays.asList(e.args()));
-        values.put("vars", site.vars(e.args()));
+        values.put("vars", vars);
         if (e.self() != null) {
             values.put("this", e.self());
         }
@@ -35,6 +40,10 @@ final class Scope {
             }
         }
         return true;
+    }
+
+    boolean hasVars(List<String> names) {
+        return vars.keySet().containsAll(names);
     }
 
     Object[] args() {

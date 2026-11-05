@@ -11,6 +11,8 @@ final class Event {
     private boolean hasRet;
     private Throwable thrown;
     private double durationMs = Double.NaN;
+    private int line;
+    private java.util.Map<String, Object> locals;
 
     Event(String point, long call, long parent, Object self, Object[] args) {
         this.point = point;
@@ -29,6 +31,20 @@ final class Event {
     Event threw(Throwable error) {
         this.thrown = error;
         return this;
+    }
+
+    Event atLine(int number, java.util.Map<String, Object> values) {
+        this.line = number;
+        this.locals = values;
+        return this;
+    }
+
+    int line() {
+        return line;
+    }
+
+    java.util.Map<String, Object> locals() {
+        return locals;
     }
 
     Event took(double ms) {

@@ -16,6 +16,7 @@ public final class ProbeSpec {
     private final String method;
     private final List<String> params;
     private final Set<String> at;
+    private final Set<Integer> lines;
     private final WhatItem when;
     private final List<WhatItem> what;
     private final Limits limits;
@@ -28,6 +29,7 @@ public final class ProbeSpec {
         List<String> p = n.strings("params");
         this.params = p == null ? null : Collections.unmodifiableList(p);
         this.at = Collections.unmodifiableSet(new LinkedHashSet<>(n.strings("at")));
+        this.lines = Collections.unmodifiableSet(new LinkedHashSet<>(n.integers("lines")));
         this.when = n.has("when") ? WhatItem.from(n.node("when")) : null;
         List<WhatItem> items = new ArrayList<>();
         for (Node item : n.nodes("what")) {
@@ -67,6 +69,14 @@ public final class ProbeSpec {
 
     public Set<String> at() {
         return at;
+    }
+
+    public Set<Integer> lines() {
+        return lines;
+    }
+
+    public boolean isLine() {
+        return !lines.isEmpty();
     }
 
     public WhatItem when() {

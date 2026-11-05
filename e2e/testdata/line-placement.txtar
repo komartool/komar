@@ -1,0 +1,48 @@
+# several lines in one probe; an untaken branch writes nothing but is placed; blank and out-of-method lines are reported; ret is never present at a line; at is rejected
+exec javac --release 8 -Xlint:-options -g -d classes Main.java
+exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+exec-status 2 komar run bad.yaml -o bad.jsonl -- java -cp classes Main
+stderr 'komar: bad.yaml:3:56: probe "x": "at" is not allowed on a line probe; it fires at each listed line'
+
+-- Main.java --
+public class Main {
+    private final int base = 10;
+
+    int calc(int x) {
+        int y = x + base;
+
+        if (x < 0) {
+            y = -y;
+        }
+        return y;
+    }
+
+    public static void main(String[] args) {
+        new Main().calc(2);
+    }
+}
+-- spec.yaml --
+probes:
+  - id: lines
+    where: { class: Main, method: calc, line: [5, 6, 8, 10, 14] }
+    what:
+      - y: vars.y
+      - base: this.base
+      - first: args[0]
+      - ret
+-- bad.yaml --
+probes:
+  - id: x
+    where: { class: Main, method: calc, line: [5], at: [entry] }
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"lines","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"lines","point":"line","method":"Main.calc(int)","line":5,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"base":10,"first":2}}
+{"kind":"hit","probe":"lines","point":"line","method":"Main.calc(int)","line":10,"call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"y":12,"base":10,"first":2}}
+{"kind":"diag","level":"warn","probe":"lines","msg":"line 6 has no code in calc or its lambdas and local classes (blank line, comment, or outside the method)","pid":1}
+{"kind":"diag","level":"warn","probe":"lines","msg":"line 14 has no code in calc or its lambdas and local classes (blank line, comment, or outside the method)","pid":1}
+{"kind":"end","reason":"exit","code":0,"hits":{"lines":2},"dropped":0,"when_errors":{}}

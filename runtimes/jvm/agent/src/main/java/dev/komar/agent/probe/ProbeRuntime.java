@@ -2,7 +2,10 @@ package dev.komar.agent.probe;
 
 import dev.komar.agent.cel.CelEngine;
 import dev.komar.agent.spec.ProbeSpec;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.bytebuddy.description.method.MethodDescription;
@@ -21,8 +24,10 @@ final class ProbeRuntime {
     private final AtomicInteger methods = new AtomicInteger();
     private final Set<String> classes = ConcurrentHashMap.newKeySet();
     private final Set<String> skipped = ConcurrentHashMap.newKeySet();
+    private final Set<Integer> placedLines = ConcurrentHashMap.newKeySet();
     private volatile boolean typeSeen;
     private volatile boolean abstractSeen;
+    private volatile boolean noLineTable;
 
     ProbeRuntime(ProbeSpec spec, CelEngine cel) {
         this.spec = spec;
@@ -49,8 +54,15 @@ final class ProbeRuntime {
         return spec.at().contains(point);
     }
 
+    boolean fires(Event e) {
+        if (Points.LINE.equals(e.point())) {
+            return spec.lines().contains(e.line());
+        }
+        return wants(e.point());
+    }
+
     boolean matchesType(TypeDescription td) {
-        boolean matched = typeMatcher.matches(td);
+        boolean matched = typeMatcher.matches(td) || (spec.isLine() && insideTarget(td));
         if (matched) {
             typeSeen = true;
             abstractSeen |= td.isInterface() || td.isAbstract();
@@ -58,10 +70,21 @@ final class ProbeRuntime {
         return matched;
     }
 
-    boolean matchesMethod(MethodDescription m) {
-        if (m.isAbstract() || m.isNative() || m.isBridge() || m.isSynthetic() || m.isTypeInitializer()) {
+    boolean matchesMethod(TypeDescription td, MethodDescription m) {
+        if (m.isAbstract() || m.isNative() || m.isBridge() || m.isTypeInitializer()) {
             return false;
         }
+        if (spec.isLine() && (insideTarget(td) || isTargetLambda(m))) {
+            return true;
+        }
+        return !m.isSynthetic() && matchesDeclared(m);
+    }
+
+    private boolean isTargetLambda(MethodDescription m) {
+        return m.isSynthetic() && Lambdas.isLambda(m.getName()) && targetsName(Lambdas.owner(m.getName()));
+    }
+
+    private boolean matchesDeclared(MethodDescription m) {
         if (spec.isConstructor() != m.isConstructor()) {
             return false;
         }
@@ -69,6 +92,49 @@ final class ProbeRuntime {
             return false;
         }
         return spec.params() == null || Params.match(spec.params(), m.getParameters());
+    }
+
+    private boolean insideTarget(TypeDescription td) {
+        MethodDescription.InDefinedShape em = Lambdas.enclosingMethod(td);
+        if (em == null) {
+            return false;
+        }
+        TypeDescription owner = em.getDeclaringType();
+        String name = em.isConstructor() ? ProbeSpec.CONSTRUCTOR : Lambdas.owner(em.getName());
+        return (classPattern.matchesClass(owner.getName()) && targetsName(name)) || insideTarget(owner);
+    }
+
+    private boolean targetsName(String name) {
+        return spec.isConstructor() ? ProbeSpec.CONSTRUCTOR.equals(name) : methodPattern.matches(name);
+    }
+
+    void placedLine(int line) {
+        placedLines.add(line);
+    }
+
+    void noLineTable() {
+        noLineTable = true;
+    }
+
+    List<String> lineProblems() {
+        List<String> out = new ArrayList<>();
+        if (!spec.isLine() || methods.get() == 0) {
+            return out;
+        }
+        Set<Integer> missing = new TreeSet<>(spec.lines());
+        missing.removeAll(placedLines);
+        if (missing.isEmpty()) {
+            return out;
+        }
+        if (placedLines.isEmpty() && noLineTable) {
+            out.add("cannot place line probe: " + classPattern + " has no line number table (compiled with -g:none)");
+            return out;
+        }
+        for (int line : missing) {
+            out.add("line " + line + " has no code in " + methodPattern
+                    + " or its lambdas and local classes (blank line, comment, or outside the method)");
+        }
+        return out;
     }
 
     boolean admitClass(String name, Recorder recorder) {

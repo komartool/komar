@@ -61,6 +61,17 @@ final class Node {
         return out;
     }
 
+    List<Integer> integers(String key) {
+        List<Integer> out = new ArrayList<>();
+        for (Object item : list(key)) {
+            if (!(item instanceof Number)) {
+                throw new IllegalArgumentException("session: " + key + " must hold numbers");
+            }
+            out.add(((Number) item).intValue());
+        }
+        return out;
+    }
+
     private List<?> list(String key) {
         Object v = map.get(key);
         if (v == null) {
