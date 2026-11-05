@@ -1,0 +1,62 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - revive
+    - gocritic
+    - gocyclo
+    - gocognit
+    - funlen
+    - nestif
+    - errorlint
+    - errname
+    - wrapcheck
+    - nilerr
+    - bodyclose
+    - unconvert
+    - unparam
+    - misspell
+    - predeclared
+    - nakedret
+    - exhaustive
+    - forbidigo
+  settings:
+    gocyclo:
+      min-complexity: 12
+    gocognit:
+      min-complexity: 15
+    funlen:
+      lines: 60
+      statements: 40
+    nestif:
+      min-complexity: 4
+    nakedret:
+      max-func-lines: 0
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+        - name: receiver-naming
+        - name: indent-error-flow
+        - name: early-return
+        - name: unused-parameter
+        - name: max-public-structs
+          arguments: [8]
+    forbidigo:
+      forbid:
+        - pattern: ^print(ln)?$
+        - pattern: ^panic$
+          msg: return an error instead
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [funlen, gocognit, wrapcheck, forbidigo]
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

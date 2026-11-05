@@ -1,0 +1,49 @@
+version: 3
+workdir: .
+allow:
+  depOnAnyVendor: false
+  ignoreNotFoundComponents: true
+
+exclude:
+  - runtimes
+  - docs
+  - bin
+
+excludeFiles:
+  - "^.*_test\\.go$"
+
+vendors:
+  yaml: { in: [gopkg.in/yaml.v3] }
+  cel: { in: [github.com/google/cel-go/**] }
+  testscript: { in: [github.com/rogpeppe/go-internal/**] }
+
+components:
+  main: { in: cmd/komar }
+  spec: { in: internal/spec }
+  celcheck: { in: internal/celcheck }
+  launch: { in: internal/launch }
+  server: { in: internal/server }
+  writer: { in: internal/writer }
+  runtime-jvm: { in: internal/runtime/jvm }
+  e2e: { in: e2e/** }
+  bench: { in: bench/** }
+
+deps:
+  main:
+    mayDependOn: [spec, celcheck, launch, server, writer, runtime-jvm]
+  spec:
+    canUse: [yaml]
+  celcheck:
+    mayDependOn: [spec]
+    canUse: [cel]
+  launch:
+    mayDependOn: [spec]
+  server:
+    mayDependOn: [writer]
+  runtime-jvm:
+    mayDependOn: [spec, launch]
+  e2e:
+    mayDependOn: [main]
+    canUse: [testscript]
+  bench:
+    anyVendorDeps: true
