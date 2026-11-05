@@ -23,21 +23,37 @@ final class ProbeExpressions {
     private final List<Compiled> what = new ArrayList<>();
     private final AtomicLong whenErrors = new AtomicLong();
     private final AtomicBoolean whenErrorReported = new AtomicBoolean();
+    private final AtomicBoolean compiled = new AtomicBoolean();
 
-    ProbeExpressions(ProbeSpec spec, CelEngine cel, Recorder recorder) {
+    ProbeExpressions(ProbeSpec spec, CelEngine cel) {
         this.spec = spec;
-        this.when = spec.when() == null ? null : compile(spec.when(), cel, recorder, "when");
+        this.when = spec.when() == null ? null : Compiled.of(spec.when(), cel);
         for (WhatItem item : spec.what()) {
-            what.add(compile(item, cel, recorder, "what \"" + item.key() + "\""));
+            what.add(Compiled.of(item, cel));
         }
     }
 
-    private Compiled compile(WhatItem item, CelEngine cel, Recorder recorder, String label) {
-        Compiled c = Compiled.of(item, cel);
-        if (c.error() != null) {
-            recorder.diag("error", spec.id(), label + " could not be compiled: " + c.error());
+    void precompile() {
+        if (when != null) {
+            when.error();
         }
-        return c;
+        for (Compiled c : what) {
+            c.error();
+        }
+    }
+
+    private void reportCompileErrors(Recorder recorder) {
+        if (!compiled.compareAndSet(false, true)) {
+            return;
+        }
+        if (when != null && when.error() != null) {
+            recorder.diag("error", spec.id(), "when could not be compiled: " + when.error());
+        }
+        for (Compiled c : what) {
+            if (c.error() != null) {
+                recorder.diag("error", spec.id(), "what \"" + c.key() + "\" could not be compiled: " + c.error());
+            }
+        }
     }
 
     Set<String> referencedVars() {
@@ -56,6 +72,7 @@ final class ProbeExpressions {
     }
 
     boolean test(Site site, Scope scope, Recorder recorder) {
+        reportCompileErrors(recorder);
         if (when == null) {
             return true;
         }

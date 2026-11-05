@@ -29,7 +29,7 @@ public final class Placement {
         this.recorder = recorder;
         CelEngine cel = new CelEngine();
         for (ProbeSpec p : spec.probes()) {
-            probes.add(new ProbeRuntime(p, cel, recorder));
+            probes.add(new ProbeRuntime(p, cel));
         }
         this.engine = new Engine(recorder, probes);
     }
@@ -37,9 +37,10 @@ public final class Placement {
     public static Placement install(Instrumentation inst, SessionSpec spec, Recorder recorder) {
         Placement placement = new Placement(spec, recorder);
         Hooks.install(placement.engine);
+        placement.precompileInBackground();
         safeBuilder()
                 .disableClassFormatChanges()
-                .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
+                .with(AgentBuilder.RedefinitionStrategy.DISABLED)
                 .with(AgentBuilder.InjectionStrategy.Disabled.INSTANCE)
                 .with(AgentBuilder.DescriptionStrategy.Default.POOL_FIRST)
                 .with(AgentBuilder.PoolStrategy.Default.EXTENDED)
@@ -51,6 +52,16 @@ public final class Placement {
                 .transform(placement::transform)
                 .installOn(inst);
         return placement;
+    }
+
+    private void precompileInBackground() {
+        Thread t = new Thread(() -> {
+            for (ProbeRuntime p : probes) {
+                p.expressions().precompile();
+            }
+        }, "komar-cel");
+        t.setDaemon(true);
+        t.start();
     }
 
     private static AgentBuilder safeBuilder() {

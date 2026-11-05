@@ -4,7 +4,7 @@ public final class ExpressionException extends Exception {
 
     private static final long serialVersionUID = 1L;
 
-    ExpressionException(String message, Throwable cause) {
+    public ExpressionException(String message, Throwable cause) {
         super(message, cause);
     }
 }

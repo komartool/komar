@@ -16,10 +16,13 @@ public final class CelEngine {
 
     private static final String[] ROOTS = {"this", "args", "vars", "ret", "exception", "duration"};
 
-    private final CelCompiler compiler;
-    private final CelRuntime runtime;
+    private CelCompiler compiler;
+    private CelRuntime runtime;
 
-    public CelEngine() {
+    private synchronized void init() {
+        if (compiler != null) {
+            return;
+        }
         CelOptions options = CelOptions.current().enableHeterogeneousNumericComparisons(true).build();
         CelCompilerBuilder builder = CelCompilerFactory.standardCelCompilerBuilder()
                 .setOptions(options)
@@ -33,6 +36,7 @@ public final class CelEngine {
 
     public Expression compile(String text) throws ExpressionException {
         try {
+            init();
             CelAbstractSyntaxTree ast = compiler.compile(text).getAst();
             return new Expression(runtime.createProgram(ast));
         } catch (CelValidationException | CelEvaluationException | RuntimeException e) {

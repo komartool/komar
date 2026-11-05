@@ -24,9 +24,9 @@ final class ProbeRuntime {
     private volatile boolean typeSeen;
     private volatile boolean abstractSeen;
 
-    ProbeRuntime(ProbeSpec spec, CelEngine cel, Recorder recorder) {
+    ProbeRuntime(ProbeSpec spec, CelEngine cel) {
         this.spec = spec;
-        this.expressions = new ProbeExpressions(spec, cel, recorder);
+        this.expressions = new ProbeExpressions(spec, cel);
         this.classPattern = new NamePattern(spec.classPattern());
         this.methodPattern = new NamePattern(spec.method());
         ElementMatcher<TypeDescription> named = td -> classPattern.matchesClass(td.getName());

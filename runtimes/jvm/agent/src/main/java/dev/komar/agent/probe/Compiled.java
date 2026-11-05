@@ -6,6 +6,8 @@ import dev.komar.agent.cel.ExpressionException;
 import dev.komar.agent.spec.WhatItem;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 final class Compiled {
 
@@ -13,26 +15,20 @@ final class Compiled {
 
     private final WhatItem item;
     private final String root;
-    private final Expression expression;
-    private final String error;
+    private final FutureTask<Expression> task;
 
-    private Compiled(WhatItem item, String root, Expression expression, String error) {
+    private Compiled(WhatItem item, String root, FutureTask<Expression> task) {
         this.item = item;
         this.root = root;
-        this.expression = expression;
-        this.error = error;
+        this.task = task;
     }
 
     static Compiled of(WhatItem item, CelEngine cel) {
         String text = item.expr().trim();
         if (ROOTS.contains(text)) {
-            return new Compiled(item, text, null, null);
+            return new Compiled(item, text, null);
         }
-        try {
-            return new Compiled(item, null, cel.compile(text), null);
-        } catch (ExpressionException e) {
-            return new Compiled(item, null, null, e.getMessage());
-        }
+        return new Compiled(item, null, new FutureTask<>(() -> cel.compile(text)));
     }
 
     String key() {
@@ -48,7 +44,19 @@ final class Compiled {
     }
 
     String error() {
-        return error;
+        if (task == null) {
+            return null;
+        }
+        task.run();
+        try {
+            task.get();
+            return null;
+        } catch (ExecutionException e) {
+            return e.getCause().getMessage();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return "interrupted while compiling";
+        }
     }
 
     boolean applies(Scope scope, Site site) {
@@ -56,6 +64,16 @@ final class Compiled {
     }
 
     Object evaluate(Scope scope) throws ExpressionException {
-        return root != null ? scope.get(root) : expression.evaluate(scope.roots());
+        if (root != null) {
+            return scope.get(root);
+        }
+        try {
+            return task.get().evaluate(scope.roots());
+        } catch (ExecutionException e) {
+            throw new ExpressionException(e.getCause().getMessage(), e.getCause());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ExpressionException("interrupted while compiling", e);
+        }
     }
 }
