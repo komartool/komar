@@ -41,7 +41,9 @@ func Render(dump []byte, probes []string) string {
 			body[0] += "   ×" + strconv.Itoa(g.count)
 		}
 		lines = append(lines, "")
-		lines = append(lines, body...)
+		for _, line := range body {
+			lines = append(lines, wrapLine(line, maxWidth)...)
+		}
 	}
 	return strings.Join(lines, "\n") + "\n"
 }
