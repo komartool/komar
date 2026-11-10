@@ -1,0 +1,14 @@
+Identical executions fold into one block with ×N, also when the block's first type is named in full.
+-- probes --
+p
+-- dump.jsonl --
+{"kind":"hit","probe":"p","point":"entry","method":"com.shop.Svc.run(Item)","call":1,"parent":null,"pid":1,"what":{"args":[{"@type":"com.a.Item","id":1}]}}
+{"kind":"hit","probe":"p","point":"entry","method":"com.shop.Svc.run(Item)","call":2,"parent":null,"pid":1,"what":{"args":[{"@type":"com.a.Item","id":1}]}}
+{"kind":"end","reason":"exit","code":0}
+-- want.view --
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
+end: reason=exit code=0
+hits: p@entry 2
+executions: 2, distinct: 1
+
+com.shop.Svc.run(Item)  args=(com.a.Item{id: 1})   ×2

@@ -1,15 +1,15 @@
 # stop.hits writes exactly that many hits and ends the program; stop.after ends a program that never exits; end has reason stop and no code; komar exits 0
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run hits.yaml -o hits.jsonl -- java -cp classes Main
+exec komar run hits.yaml -o hits -- java -cp classes Main
 stderr 'komar: stop condition reached, program terminated'
 jsonl-norm hits.jsonl got.jsonl
 cmp got.jsonl hits.expected
 
-exec komar run after.yaml -o after.jsonl -- java -cp classes Main
+exec komar run after.yaml -o after -- java -cp classes Main
 stderr 'komar: stop condition reached, program terminated'
 grep '"kind":"end","reason":"stop","code":null' after.jsonl
 
-exec-status 2 komar run bad.yaml -o bad.jsonl -- java -cp classes Main
+exec-status 2 komar run bad.yaml -o bad -- java -cp classes Main
 cmp stderr bad.stderr
 
 -- Main.java --

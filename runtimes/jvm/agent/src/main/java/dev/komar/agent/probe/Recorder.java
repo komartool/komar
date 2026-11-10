@@ -50,6 +50,9 @@ public final class Recorder {
         if (Points.LINE.equals(e.point())) {
             out.field("line", (long) e.line());
         }
+        if (e.isCallSite()) {
+            out.field("callee", e.callee());
+        }
         if (site.enclosing() != null) {
             out.field("enclosing", site.enclosing());
         }

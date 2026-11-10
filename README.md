@@ -15,7 +15,7 @@ make build        # bin/komar, agent jar embedded
 ## Use
 
 ```sh
-komar run spec.yaml -o out.jsonl -- java -cp app.jar com.shop.Main
+komar run spec.yaml -o out -- java -cp app.jar com.shop.Main
 ```
 
 ```yaml
@@ -47,11 +47,16 @@ probes:
 - `vars` needs `-parameters` or `-g`; locals at a line need `-g`.
 - The spec is checked before launch; every error is reported with its line and column.
 
-Each record is one JSON line: `run`, then `hit` and `diag` records, then `end`.
+`-o out` writes two files; `-f jsonl` or `-f view` keeps only one:
+
+- `out.view`: a compact call tree for reading. Repeated values and identical executions are shown once.
+- `out.jsonl`: the full record, one JSON line per record: `run`, then `hit` and `diag`, then `end`.
 
 ```sh
 jq -c 'select(.probe=="big_orders" and .point=="exit") | .what' out.jsonl
 ```
+
+The formats are described in [docs/design/output-format.md](docs/design/output-format.md).
 
 ## Develop
 

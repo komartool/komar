@@ -1,6 +1,6 @@
 # a probe matching more classes than limits.classes is switched off with one diag; hits before that stay; other probes keep working
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

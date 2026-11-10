@@ -1,6 +1,6 @@
 # exact class names, wildcards, binary names of nested classes, static and private methods
 exec javac --release 8 -Xlint:-options -d classes Main.java shop/OrderService.java shop/UserService.java shop/Repo.java other/Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

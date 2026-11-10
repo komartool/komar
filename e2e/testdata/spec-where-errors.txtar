@@ -1,5 +1,5 @@
 # where, at, what and limits mistakes are reported together before anything starts
-exec-status 2 komar run spec.yaml -o out.jsonl -- java -version
+exec-status 2 komar run spec.yaml -o out -- java -version
 cmp stderr expected.stderr
 ! exists out.jsonl
 

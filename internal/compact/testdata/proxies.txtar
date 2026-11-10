@@ -1,0 +1,13 @@
+Generated proxies and mocks are shown by the class they stand for, without their fields.
+-- probes --
+p
+-- dump.jsonl --
+{"kind":"hit","probe":"p","point":"entry","method":"Svc.run(Tariffs, Repo, Clock, Calc)","call":1,"parent":null,"pid":1,"what":{"args":[{"@type":"com.shop.Tariffs$$EnhancerBySpringCGLIB$$1a2b","cache":{"@type":"java.util.HashMap"},"rates":[1,2,3]},{"@type":"com.sun.proxy.$Proxy12","h":{"@type":"Handler","x":1}},{"@type":"com.shop.Clock$MockitoMock$123","mockitoInterceptor":{"@type":"I"}},{"@type":"com.shop.$Calc$Definition$Intercepted","x":1}]}}
+{"kind":"end","reason":"exit","code":0}
+-- want.view --
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
+end: reason=exit code=0
+hits: p@entry 1
+executions: 1, distinct: 1
+
+Svc.run(Tariffs, Repo, Clock, Calc)  args=(com.shop.Tariffs{proxy}, com.sun.proxy.$Proxy12{proxy}, com.shop.Clock{proxy}, com.shop.Calc{proxy})

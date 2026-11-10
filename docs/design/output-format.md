@@ -1,6 +1,6 @@
 # Output format
 
-What `komar run` writes: one JSONL file per run, and how an agent reads it.
+What `komar run` writes: a JSONL dump and a compact view per run, and how an agent reads them.
 
 This document describes the design decided for the MVP. Decisions are cited as `(D-n)`; their full
 record is in [decisions.md](decisions.md). Items marked *proposal, not confirmed* are listed in
@@ -14,9 +14,28 @@ are reported, [jvm-runtime.md](jvm-runtime.md) explains how the agent produces t
 
 ---
 
-## 1. One file, one writer
+## 1. Output files
 
-- Every run writes **one** JSONL file, the path given by `-o` (D-24).
+`-o` names the output without an extension; `-f` picks the formats, both by default:
+
+```sh
+komar run spec.yaml -o out -- java -jar app.jar              # out.jsonl and out.view
+komar run spec.yaml -o out -f jsonl -- java -jar app.jar     # out.jsonl only
+komar run spec.yaml -o out -f view -- java -jar app.jar      # out.view only
+```
+
+| Format | File | What it is |
+|---|---|---|
+| `jsonl` | `<name>.jsonl` | the full record of the run, one JSON object per line; the source of truth, described in this document |
+| `view` | `<name>.view` | a compact text view rendered from the dump after the run, for reading in a context window; see [section 12](#12-the-compact-view) |
+
+A `.jsonl` or `.view` suffix on `-o` is dropped, so `-o out.jsonl` also writes `out.jsonl` and
+`out.view`. With `-f view` the dump is written to a temporary file and deleted after the view is
+rendered.
+
+### One dump, one writer
+
+- Every run writes **one** JSONL dump (D-24).
 - The **CLI is the only writer** of that file. Every JVM in a launched process tree loads the agent
   and sends its records to the `komar` process; no agent ever opens the file (D-27).
 - One line is one JSON object. Every object has a `kind` field.
@@ -33,6 +52,7 @@ flowchart LR
     A1[agent in JVM 1] -- records --> CLI
     A2[agent in JVM 2] -- records --> CLI
     CLI[komar CLI<br/>assigns seq] --> F[(out.jsonl)]
+    F -. after the run .-> V[(out.view)]
     F --> R[run header]
     F --> H[hit / diag records<br/>as they happen]
     F --> E[end record<br/>if the session ends normally]
@@ -96,6 +116,7 @@ spec appears under `"what"` in the record.
 | `probe` | the probe `id` from the spec | D-5 |
 | `point` | `entry`, `exit`, `exception`, `line`, `before`, `after` | D-5, D-8, D-9 |
 | `method` | the method that **actually ran**: the specific overload when `params` was left out, or the lambda body / anonymous-class method when a line or call-site probe covers it | D-7, D-12 |
+| `callee` | call-site records only: the method the call instruction names, e.g. `com.shop.Repo.findById(long)`; for interface and virtual calls this is the declared method, the run-time class is in `call.target` | D-9 |
 | `call` | id of the invocation this record belongs to | D-21 |
 | `parent` | `call` of the nearest enclosing probed invocation on the same thread, or `null` | D-21 |
 | `thread` | `{ "id": ..., "name": ... }` of the thread that fired | D-21 |
@@ -356,7 +377,9 @@ Redaction is not built; it is not recorded as rejected for later.
 
 ## 10. Querying the output
 
-Analysis happens outside the CLI, in the analysis skill (D-40). In the MVP the skill ships:
+An agent starts with `out.view` (section 12) and goes to the dump with jq or DuckDB for what the
+view leaves out. Analysis happens outside the CLI, in the analysis skill (D-40). In the MVP the
+skill ships:
 
 - a JSON Schema for `run`, `hit`, `diag` and `end`;
 - `SKILL.md` explaining the record kinds, the call model and its gaps, and the secrets warning;
@@ -392,9 +415,10 @@ GROUP BY probe;
 
 Grouping across threads uses a captured program value, e.g. `group_by(.what.request_id)`.
 
-One unverified point: when different probes capture different keys, DuckDB may read the `what`
-object as a MAP instead of a struct. The recipes have to account for it; it is an open measurement
-item.
+DuckDB's guess at the type of `what` depends on the data: one STRUCT with the union of all keys,
+JSON for a key whose type differs between records, or a MAP when there are hundreds of distinct
+keys. The reliable recipe declares `what` as JSON and reads keys with `what->>'$.key'`
+(measured in the MVP, O-9).
 
 ---
 
@@ -473,3 +497,54 @@ Open details of this example, not decided: whether `run`, `diag` and `end` recor
 and `seq` exactly as shown (D-25 says "every record"); the field names inside `diag` and `end`;
 and how two calls of the same call site inside one invocation (for example in a loop) are told
 apart, since both carry the enclosing `call`.
+
+---
+
+## 12. The compact view
+
+`<name>.view` is rendered from the dump after the run. It is lossy and meant for reading: on the
+MVP benchmark dumps it takes about 16% of the tokens of the hit records. It has no version and no
+stable grammar; scripts read the dump.
+
+The view starts with a legend line and a summary, then one block per distinct top-level
+invocation:
+
+```
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, …
+end: reason=exit code=0
+no hits: refund
+hits: charge@entry 3, gw@before 3, gw@after 2, charge@exit 2, gw@exception 1, charge@exception 1
+executions: 3, distinct: 2
+
+com.shop.Billing.charge(Order)  args=(com.shop.Order#1{id: 42, total: 1500.0})   ×2
+  → com.pay.Gateway.send(Order#1) ⇒ true
+  ⇒ true
+
+Billing.charge(Order)  args=(Order#2{id: 43, total: 0.0})
+  → Gateway.send(Order#2) ⇒ threw com.pay.Declined#3{message: "zero amount"}
+  ⇒ threw Declined#3
+```
+
+| Form | Meaning |
+|---|---|
+| `end:` / `no hits:` / `hits:` | how the run ended, probes that never fired (and whether `stop` cut the run), hit counts per probe and point |
+| `error:` / `warn:` | non-info diags; repeated ones are folded, e.g. `×85 classes, also …` |
+| `Method(…)  this=… args=(…)` | an invocation's entry, with the captured values |
+| `  → callee(args) ⇒ ret` | a call-site probe: `before` and `after` merged, named by `callee` |
+| `  ⇒ value` / `⇒ threw X` / `⇒ returned` | the invocation's outcome |
+| `  L42 k=v` | a line hit |
+| `×N` | the same line, or the same whole execution, N times |
+| `Type{…}` | object cut by `depth`; `Type{a: 1, …}` some fields cut by `fields` |
+| `Type#n{…}` then `#n` | a value shown once, then referred to |
+| `Type#m=#n+{f: v}` | like `#n` except these fields; `f: ∅` means the field is now empty |
+| `^n` | a reference inside one captured value (`@id`/`@ref`) |
+| `Type{proxy}` | a generated proxy or mock, shown by the class it stands for |
+
+- Types are named in full on first use and by their simple name after that, unless two types
+  share a simple name.
+- Null and empty fields are left out.
+- `ts`, `t`, `seq`, `thread`, `pid` and the `call` and `parent` ids are left out; the tree replaces
+  `call` and `parent`.
+- Lines longer than 160 characters are broken at their brackets.
+- A view longer than 2,000 lines or 50 KB starts with a table of contents: one line per distinct
+  execution with the line number of its block, which starts with `[n]`.

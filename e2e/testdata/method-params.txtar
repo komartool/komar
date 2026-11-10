@@ -1,6 +1,6 @@
 # params select overloads: none = all, qualified, simple names, ambiguous simple names, empty, primitive vs boxed, arrays, generics, varargs, type variables, no match
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

@@ -1,16 +1,16 @@
 # vars needs parameter names: present with -parameters or -g, missing names leave items out, make when false and are reported once with the reason
 exec javac --release 8 -Xlint:-options -parameters -d named Main.java
-exec komar run spec.yaml -o named.jsonl -- java -cp named Main
+exec komar run spec.yaml -o named -- java -cp named Main
 jsonl-norm named.jsonl got.jsonl
 cmp got.jsonl named.expected
 
 exec javac --release 8 -Xlint:-options -g -d debug Main.java
-exec komar run spec.yaml -o debug.jsonl -- java -cp debug Main
+exec komar run spec.yaml -o debug -- java -cp debug Main
 jsonl-norm debug.jsonl got.jsonl
 cmp got.jsonl debug.expected
 
 exec javac --release 8 -Xlint:-options -d plain Main.java
-exec komar run spec.yaml -o plain.jsonl -- java -cp plain Main
+exec komar run spec.yaml -o plain -- java -cp plain Main
 jsonl-norm plain.jsonl got.jsonl
 cmp got.jsonl plain.expected
 

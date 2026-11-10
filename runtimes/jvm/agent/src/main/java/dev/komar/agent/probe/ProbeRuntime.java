@@ -3,6 +3,7 @@ package dev.komar.agent.probe;
 import dev.komar.agent.cel.CelEngine;
 import dev.komar.agent.spec.CallSpec;
 import dev.komar.agent.spec.ProbeSpec;
+import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -43,7 +44,6 @@ final class ProbeRuntime {
     private volatile boolean typeSeen;
     private volatile boolean abstractSeen;
     private volatile boolean noLineTable;
-    private volatile boolean interfaceTarget;
     private final AtomicBoolean switchedOff = new AtomicBoolean();
 
     ProbeRuntime(ProbeSpec spec, CelEngine cel) {
@@ -96,10 +96,11 @@ final class ProbeRuntime {
         if (insn.getOpcode() == Opcodes.INVOKESTATIC) {
             return callClass.matchesClass(owner);
         }
-        if (insn.itf && !call.subtypes() && callClass.matchesClass(owner)) {
-            interfaceTarget = true;
-        }
         return true;
+    }
+
+    private static boolean isAbstract(Class<?> c) {
+        return c.isInterface() || Modifier.isAbstract(c.getModifiers());
     }
 
     boolean matchesReceiver(Class<?> type) {
@@ -107,14 +108,15 @@ final class ProbeRuntime {
     }
 
     private boolean receiverMatches(Class<?> type) {
-        if (!spec.call().subtypes()) {
-            return callClass.matchesClass(type.getName());
+        if (callClass.matchesClass(type.getName())) {
+            return true;
         }
+        boolean onlyAbstract = !spec.call().subtypes();
         Deque<Class<?>> todo = new ArrayDeque<>();
         todo.push(type);
         while (!todo.isEmpty()) {
             Class<?> c = todo.pop();
-            if (callClass.matchesClass(c.getName())) {
+            if ((!onlyAbstract || isAbstract(c)) && callClass.matchesClass(c.getName())) {
                 return true;
             }
             if (c.getSuperclass() != null) {
@@ -199,10 +201,6 @@ final class ProbeRuntime {
             return out;
         }
         String target = spec.call().classPattern() + "." + spec.call().method();
-        if (interfaceTarget) {
-            out.add("call target " + spec.call().classPattern() + " is an interface and can never be the run-time"
-                    + " class of the receiver; use subtypes: true");
-        }
         if (placedCalls.get() == 0) {
             out.add("no call to " + target + " found in " + methodPattern
                     + " or its lambdas and local classes");

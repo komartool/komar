@@ -9,14 +9,17 @@ import java.util.Map;
 final class CallPoint {
 
     private final Site site;
+    private final String callee;
     private final String[] names;
     private final List<ProbeRuntime> probes;
     private final boolean returnsValue;
     private final boolean isStatic;
 
-    CallPoint(Site site, String[] names, List<ProbeRuntime> probes, boolean returnsValue, boolean isStatic) {
+    CallPoint(Site site, String callee, String[] names, List<ProbeRuntime> probes, boolean returnsValue,
+              boolean isStatic) {
         this.isStatic = isStatic;
         this.site = site;
+        this.callee = callee;
         this.names = names.clone();
         this.probes = Collections.unmodifiableList(new ArrayList<>(probes));
         this.returnsValue = returnsValue;
@@ -24,6 +27,10 @@ final class CallPoint {
 
     Site site() {
         return site;
+    }
+
+    String callee() {
+        return callee;
     }
 
     boolean returnsValue() {

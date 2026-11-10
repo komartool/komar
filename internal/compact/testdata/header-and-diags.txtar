@@ -1,0 +1,22 @@
+The header puts the outcome first, names probes without hits, and folds diagnostics that differ only by class.
+-- probes --
+target helper
+-- dump.jsonl --
+{"kind":"run","format":1,"spec":"s.yaml","cmd":["mvn","test"]}
+{"kind":"diag","level":"info","msg":"agent started","pid":1}
+{"kind":"diag","level":"error","msg":"could not instrument org.m.A: boom","class":"org.m.A","pid":1}
+{"kind":"diag","level":"error","msg":"could not instrument org.m.B: boom","class":"org.m.B","pid":1}
+{"kind":"diag","level":"error","msg":"could not instrument org.m.C: boom","class":"org.m.C","pid":2}
+{"kind":"diag","level":"warn","probe":"target","msg":"max_hits reached; probe stopped","pid":1}
+{"kind":"hit","probe":"target","point":"entry","method":"Svc.run()","call":1,"parent":null,"pid":1,"what":{}}
+{"kind":"end","reason":"stop","code":null,"dropped":3}
+-- want.view --
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
+end: reason=stop dropped=3
+no hits: helper (the run was stopped before they fired)
+hits: target@entry 1
+error: could not instrument org.m.A: boom   ×3 classes, also org.m.B, org.m.C
+warn: target max_hits reached; probe stopped
+executions: 1, distinct: 1
+
+Svc.run()

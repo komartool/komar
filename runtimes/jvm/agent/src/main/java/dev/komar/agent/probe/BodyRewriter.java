@@ -68,7 +68,8 @@ final class BodyRewriter extends ClassNode {
             Frame frame = frame(mn, mn.instructions.indexOf(insn), initIndex);
             boolean returnsValue = Type.getReturnType(insn.desc).getSort() != Type.VOID;
             boolean isStatic = insn.getOpcode() == Opcodes.INVOKESTATIC;
-            CallPoint point = new CallPoint(plan.site(), frame.localNames(), matched, returnsValue, isStatic);
+            CallPoint point = new CallPoint(plan.site(), callee(insn), frame.localNames(), matched, returnsValue,
+                    isStatic);
             int id = engine.registerCall(point);
             CallSiteCode.wrap(mn, insn, id, frame);
             for (ProbeRuntime p : matched) {
@@ -76,6 +77,24 @@ final class BodyRewriter extends ClassNode {
                 vars.check(p, plan.site(), "the call to " + insn.name, frame.localNames(), mn.localVariables);
             }
         }
+    }
+
+    private static String callee(MethodInsnNode insn) {
+        StringBuilder sb = new StringBuilder(Type.getObjectType(insn.owner).getClassName())
+                .append('.').append(insn.name).append('(');
+        Type[] params = Type.getArgumentTypes(insn.desc);
+        for (int i = 0; i < params.length; i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(simpleName(params[i].getClassName()));
+        }
+        return sb.append(')').toString();
+    }
+
+    private static String simpleName(String className) {
+        int cut = Math.max(className.lastIndexOf('.'), className.lastIndexOf('$'));
+        return className.substring(cut + 1);
     }
 
     private static boolean isWrappable(MethodInsnNode insn) {

@@ -1,0 +1,16 @@
+An object cut by the fields limit keeps the fields that were captured; one cut by depth is Type{…}.
+-- probes --
+p
+-- dump.jsonl --
+{"kind":"hit","probe":"p","point":"entry","method":"Svc.run(Configuration)","call":1,"parent":null,"pid":1,"what":{"args":[{"@type":"org.x.Configuration","lazy":false,"cacheEnabled":true,"@truncated":["a","b"]}]}}
+{"kind":"hit","probe":"p","point":"entry","method":"Svc.run(Configuration)","call":2,"parent":null,"pid":1,"what":{"args":[{"@type":"org.x.Configuration","@truncated":true}]}}
+{"kind":"end","reason":"exit","code":0}
+-- want.view --
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
+end: reason=exit code=0
+hits: p@entry 2
+executions: 2, distinct: 2
+
+Svc.run(Configuration)  args=(org.x.Configuration#1{lazy: false, cacheEnabled: true, …})
+
+Svc.run(Configuration)  args=(Configuration{…})

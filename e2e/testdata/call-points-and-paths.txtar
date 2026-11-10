@@ -2,7 +2,7 @@
 exec javac --release 8 -Xlint:-options -d classes Main.java
 exec java -cp classes Main
 cp stdout base.txt
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 cmp stdout base.txt
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
@@ -61,11 +61,11 @@ probes:
 {"kind":"diag","level":"info","probe":"after_only","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"exception_only","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"caller","msg":"placed","class":"Main","methods":1,"pid":1}
-{"kind":"hit","probe":"before_only","point":"before","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":[1]}}
-{"kind":"hit","probe":"after_only","point":"after","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":10}}
-{"kind":"hit","probe":"before_only","point":"before","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":[-2]}}
-{"kind":"hit","probe":"exception_only","point":"exception","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"err":"bad -2"}}
-{"kind":"hit","probe":"before_only","point":"before","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":[5]}}
-{"kind":"hit","probe":"after_only","point":"after","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":50}}
+{"kind":"hit","probe":"before_only","point":"before","method":"Main.run(int[])","callee":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":[1]}}
+{"kind":"hit","probe":"after_only","point":"after","method":"Main.run(int[])","callee":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":10}}
+{"kind":"hit","probe":"before_only","point":"before","method":"Main.run(int[])","callee":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":[-2]}}
+{"kind":"hit","probe":"exception_only","point":"exception","method":"Main.run(int[])","callee":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"err":"bad -2"}}
+{"kind":"hit","probe":"before_only","point":"before","method":"Main.run(int[])","callee":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":[5]}}
+{"kind":"hit","probe":"after_only","point":"after","method":"Main.run(int[])","callee":"Main.check(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":50}}
 {"kind":"hit","probe":"caller","point":"exit","method":"Main.run(int[])","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":59}}
 {"kind":"end","reason":"exit","code":0,"hits":{"after_only":2,"before_only":3,"caller":1,"exception_only":1},"dropped":0,"when_errors":{}}

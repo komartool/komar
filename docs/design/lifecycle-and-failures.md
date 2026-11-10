@@ -155,11 +155,11 @@ command it just ran (D-33).
   Standards prescribe for noninteractive programs
   (https://www.gnu.org/prep/standards/html_node/Errors.html §4.4).
 - **Suggestions** where they are obvious ("did you mean ...").
-- **Exit 2**, nothing launched or attached, and the `-o` file is not touched, so an earlier good
+- **Exit 2**, nothing launched or attached, and the `-o` files are not touched, so an earlier good
   output survives.
 
 ```text
-$ komar run spec.yaml -o out.jsonl -- java -jar app.jar
+$ komar run spec.yaml -o out -- java -jar app.jar
 komar: spec.yaml:12:11: unknown key "wher" (did you mean "where"?)
 komar: spec.yaml:19:13: when: undeclared reference to "ret" in probe "charge" at point "entry"
 komar: spec.yaml:24:9: what: method call "getTotal()" requires "calls: true" at the top of the spec

@@ -1,6 +1,6 @@
 # a void method's exit has no ret key; a method with several returns records the right ret on each path; null ret is a real null
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

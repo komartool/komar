@@ -1,0 +1,47 @@
+# a class whose supertype is missing from the class path can never load, so subtype matching skips it with one info summary instead of an error per class, and other probes still work
+exec javac --release 8 -Xlint:-options -d classes Main.java Base.java Missing.java Orphan.java
+rm classes/Missing.class
+exec komar run spec.yaml -o out -- java -cp classes Main
+stdout '^orphan unavailable$'
+jsonl-norm out.jsonl got.jsonl
+cmp got.jsonl expected.jsonl
+
+-- Main.java --
+public class Main {
+    static int work(int x) {
+        return x + 1;
+    }
+
+    public static void main(String[] args) {
+        try {
+            new Orphan();
+        } catch (NoClassDefFoundError e) {
+            System.out.println("orphan unavailable");
+        }
+        System.out.println(work(1));
+    }
+}
+-- Base.java --
+public class Base {
+}
+-- Missing.java --
+public class Missing {
+}
+-- Orphan.java --
+public class Orphan extends Missing {
+}
+-- spec.yaml --
+probes:
+  - id: base
+    where: { class: Base, subtypes: true, method: '*' }
+  - id: work
+    where: { class: Main, method: work, at: [exit] }
+    what: [ret]
+-- expected.jsonl --
+{"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
+{"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
+{"kind":"diag","level":"info","probe":"work","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"work","point":"exit","method":"Main.work(int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
+{"kind":"diag","level":"info","msg":"subtype matching skipped 1 classes whose supertypes could not be read, e.g. Orphan (missing Missing)","pid":1}
+{"kind":"diag","level":"error","probe":"base","msg":"no class matched Base (none was loaded during the run)"}
+{"kind":"end","reason":"exit","code":0,"hits":{"work":1},"dropped":0,"when_errors":{}}

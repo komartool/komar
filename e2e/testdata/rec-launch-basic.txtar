@@ -1,6 +1,6 @@
 # launch writes run, agent diag and end; program exit code goes into end, komar exits 0
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 stdout '^hello from main$'
 stderr 'komar: program exited with code 3'
 jsonl-norm out.jsonl got.jsonl

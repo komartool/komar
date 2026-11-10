@@ -1,6 +1,6 @@
 # when filters hits per point; a condition on args filters entry and exit of one call alike; ints and doubles compare on one number line
 exec javac --release 8 -Xlint:-options -parameters -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

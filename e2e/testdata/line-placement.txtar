@@ -1,10 +1,10 @@
 # several lines in one probe; an untaken branch writes nothing but is placed; blank and out-of-method lines are reported; ret is never present at a line; at is rejected
 exec javac --release 8 -Xlint:-options -g -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 
-exec-status 2 komar run bad.yaml -o bad.jsonl -- java -cp classes Main
+exec-status 2 komar run bad.yaml -o bad -- java -cp classes Main
 stderr 'komar: bad.yaml:3:56: probe "x": "at" is not allowed on a line probe; it fires at each listed line'
 
 -- Main.java --

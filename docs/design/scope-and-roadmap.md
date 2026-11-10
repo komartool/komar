@@ -6,9 +6,10 @@ will be verified, and what could go wrong. Decision IDs (`D-n`) point to
 
 ## In the MVP
 
-- **CLI.** `komar run spec.yaml -o out.jsonl -- <program>` launches a program; `komar run spec.yaml
-  -o out.jsonl -p <pid>` attaches to a running JVM (D-1). The CLI checks the whole spec before it
-  starts anything (D-15, D-33) and is the only writer of the output file (D-27).
+- **CLI.** `komar run spec.yaml -o out -- <program>` launches a program; `komar run spec.yaml
+  -o out -p <pid>` attaches to a running JVM (D-1). The CLI checks the whole spec before it
+  starts anything (D-15, D-33) and is the only writer of the output (D-27). It writes the JSONL
+  dump `out.jsonl` and the compact view `out.view`; `-f jsonl` or `-f view` picks one.
 - **Runtime.** Target JVMs from Java 8 up (D-3). `-p` works on HotSpot on Linux and macOS; launch
   mode works on any JVM that reads `JAVA_TOOL_OPTIONS` (D-4). The agent is built on ByteBuddy
   (D-36), ships inside the Go binary (D-39), and is attached by Go code (D-37).

@@ -335,8 +335,9 @@ call: { class: com.pay.StripeGateway, method: send }                    # only S
 call: { class: com.pay.PaymentGateway, subtypes: true, method: send }   # any gateway
 ```
 
-Naming an interface or an abstract class without `subtypes: true` can never match a run-time
-class, so Komar warns about it when it reads the spec (D-10).
+An interface or an abstract class can never be a run-time class, so naming one in `call` without
+`subtypes: true` covers its implementations: `call: { class: com.pay.PaymentGateway, method: send }`
+matches every gateway. A concrete class still matches only itself (D-10).
 
 ---
 
@@ -592,8 +593,8 @@ probes:
 Run it at launch or against a running JVM:
 
 ```text
-komar run spec.yaml -o out.jsonl -- java -jar app.jar
-komar run spec.yaml -o out.jsonl -p 4242
+komar run spec.yaml -o out -- java -jar app.jar
+komar run spec.yaml -o out -p 4242
 ```
 
 ---
@@ -621,13 +622,12 @@ questions.
 | `this` at constructor entry | `method: new`, `at: [entry]`, `what: [this]` | not available there; the exact handling (error or omission) is not decided | D-11 |
 | per-probe cap in the wrong section | `limits: { hits: 50 }` | error: `unknown key "hits" (did you mean "max_hits"?)` | D-44 |
 | run total in the wrong section | `stop: { max_hits: 500 }` | error with a suggestion of `hits` | D-44 |
-| interface without `subtypes` in `call` | `call: { class: com.pay.PaymentGateway, method: send }` | warning: an interface can never be the run-time class | D-10 |
 | pattern matching too many classes | `class: 'com.*'` | error with the number of matched classes | D-34 |
 | CEL type error \* | `when: 'duration > "100"'` | error from the CEL type check | D-15 |
 | misspelled `vars` name | `vars.ordr.total` | accepted at check time; reported when the probe is placed, then treated as missing | D-19 |
 
 ```text
-$ komar run spec.yaml -o out.jsonl -- java -jar app.jar
+$ komar run spec.yaml -o out -- java -jar app.jar
 komar: spec.yaml:12:11: unknown key "wher" (did you mean "where"?)
 komar: spec.yaml:17:7: at is not allowed on a line probe (probe "loop")
 komar: spec.yaml:24:9: what: method call "getTotal()" requires "calls: true" at the top of the spec
