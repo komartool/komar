@@ -1,6 +1,6 @@
 # subtypes: true matches implementations (also one loaded late) and overriding subclasses; an interface without subtypes matches nothing and says why
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

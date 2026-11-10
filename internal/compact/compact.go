@@ -6,15 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 )
-
-const Ext = ".komar"
-
-func PathFor(dump string) string {
-	return strings.TrimSuffix(dump, filepath.Ext(dump)) + Ext
-}
 
 func Write(dump, out string, probes []string) error {
 	data, err := os.ReadFile(dump)

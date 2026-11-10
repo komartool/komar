@@ -1,16 +1,16 @@
 # locals at a line need -g; -parameters gives only parameters; default javac leaves locals out with a diag; -g:none cannot place line probes
 exec javac --release 8 -Xlint:-options -g -d g Main.java
-exec komar run spec.yaml -o g.jsonl -- java -cp g Main
+exec komar run spec.yaml -o g -- java -cp g Main
 jsonl-norm g.jsonl got.jsonl
 cmp got.jsonl g.expected
 
 exec javac --release 8 -Xlint:-options -parameters -d params Main.java
-exec komar run spec.yaml -o params.jsonl -- java -cp params Main
+exec komar run spec.yaml -o params -- java -cp params Main
 jsonl-norm params.jsonl got.jsonl
 cmp got.jsonl params.expected
 
 exec javac --release 8 -Xlint:-options -g:none -d none Main.java
-exec komar run spec.yaml -o none.jsonl -- java -cp none Main
+exec komar run spec.yaml -o none -- java -cp none Main
 jsonl-norm none.jsonl got.jsonl
 cmp got.jsonl none.expected
 

@@ -1,9 +1,9 @@
 # call-site mistakes are reported before launch: method points on a call site, call names outside call sites, unknown call fields, mixing line and call, ret at before
-exec-status 2 komar run spec.yaml -o out.jsonl -- java -version
+exec-status 2 komar run spec.yaml -o out -- java -version
 cmp stderr expected.stderr
 ! exists out.jsonl
 
-exec komar run warn.yaml -o warn.jsonl -- java -version
+exec komar run warn.yaml -o warn -- java -version
 stderr 'komar: warning: warn.yaml:4:11: probe "w": when uses ret, not available at before; before will never fire'
 
 -- spec.yaml --

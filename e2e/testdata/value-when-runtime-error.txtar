@@ -1,6 +1,6 @@
 # a when that fails at run time counts as false, is reported once with where it first failed, and is counted per probe in end; a guarded condition never fails
 exec javac --release 8 -Xlint:-options -parameters -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

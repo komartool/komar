@@ -1,6 +1,6 @@
 # the call target matches the receiver's run-time class: exact class only, subtypes for any implementation, a base class misses its subclass; an interface or abstract class can never be the run-time class, so without subtypes it covers its implementations
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

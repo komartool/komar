@@ -1,6 +1,6 @@
 # JDK callees are observed without instrumenting the JDK; params select a callee overload; call sites inside lambdas and anonymous classes fire; callees get no records of their own; a call-site record's call is the parent of the callee's method record
 exec javac --release 8 -Xlint:-options -g -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

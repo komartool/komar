@@ -26,7 +26,7 @@ One principle, stated during the design interview, guided many later choices (D-
 
 ```mermaid
 flowchart TD
-    A[komar run spec.yaml -o out.jsonl] --> B[CLI loads the spec YAML]
+    A[komar run spec.yaml -o out] --> B[CLI loads the spec YAML]
     B --> C{cel-go checks every<br/>when / what expression}
     C -- errors --> X[errors on stderr, exit 2,<br/>nothing started]
     C -- ok --> D{mode}
@@ -109,7 +109,7 @@ probes:
     what: [this]
 ```
 
-Part of the output of `komar run spec.yaml -o out.jsonl -- java -jar app.jar`:
+Part of the output of `komar run spec.yaml -o out -- java -jar app.jar`:
 
 ```jsonl
 {"kind":"run","format":1,"komar":"0.1.0","spec":"spec.yaml","cmd":["java","-jar","app.jar"],"start":"2026-10-09T12:00:00Z"}
@@ -126,7 +126,7 @@ exactly the keys written under `what:` in the spec (D-16, D-26).
 
 | Principle | What it means in the design |
 |---|---|
-| KISS: one command | The CLI has one command, `komar run`, with `-o`, `-p <pid>` or `-- <program>`. Everything else lives in the spec (D-1, D-14, D-28). |
+| KISS: one command | The CLI has one command, `komar run`, with `-o`, `-f`, `-p <pid>` or `-- <program>`. Everything else lives in the spec (D-1, D-14, D-28). |
 | Forgiving for AI agents | Spec errors are reported all at once with a suggestion, before anything starts (D-33). A value missing at a point is left out instead of failing (D-17). A condition that cannot apply is false and explained once (D-18, D-30). |
 | Observation never changes program code | Values are read from fields, not getters. Program methods run only when the spec sets `calls: true` (D-13, D-14). On detach the original code is restored (D-29). |
 | One spec format for all runtimes | `where` is structured and source-oriented, and program names live under `vars.`, so a later Python runtime can map the same spec (D-2, D-19). |

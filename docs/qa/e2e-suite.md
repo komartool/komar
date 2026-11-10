@@ -19,8 +19,8 @@ required set.
 
 The E2E suite is a large set of end-to-end test cases. Each case runs the real `komar` binary
 against a real Java program and checks what comes out: the JSONL file, stderr and the exit code.
-JVM cases run twice, once in launch mode (`komar run spec.yaml -o out.jsonl -- java ...`) and once
-in attach mode (`komar run spec.yaml -o out.jsonl -p <pid>`). The suite runs on five JDK versions
+JVM cases run twice, once in launch mode (`komar run spec.yaml -o out -- java ...`) and once
+in attach mode (`komar run spec.yaml -o out -p <pid>`). The suite runs on five JDK versions
 on Linux and macOS, and every combination must pass before a change merges.
 
 The suite is **the main correctness gate** for Komar (E-1). This means:
@@ -57,8 +57,8 @@ case that times out leaves stack dumps of every process involved. The required c
 flowchart TD
     A[Compile the program<br/>--release 8 once, or a newer release per case<br/>-g / -g:none / -parameters per case] --> B[Baseline run without Komar<br/>record stdout, stderr, exit code]
     B --> C{Modes of the case}
-    C -->|launch| D[komar run spec.yaml -o out.jsonl -- java ...<br/>program prints READY, harness sends the trigger]
-    C -->|attach| E[start java ..., wait for READY<br/>komar run spec.yaml -o out.jsonl -p PID<br/>harness sends the trigger after probes are placed]
+    C -->|launch| D[komar run spec.yaml -o out -- java ...<br/>program prints READY, harness sends the trigger]
+    C -->|attach| E[start java ..., wait for READY<br/>komar run spec.yaml -o out -p PID<br/>harness sends the trigger after probes are placed]
     D --> F[Normalize out.jsonl<br/>renumber ids, mask versions and paths]
     E --> F
     F --> G{Check kind}
@@ -626,7 +626,7 @@ done when every case exists and passes on all 20 combinations.
 | `spec-cel-yaml-tag` | an unquoted `when: !vars.ok` is reported as a YAML error at its position, not silently mis-parsed | D-33 | no JVM | stderr+exit |
 | `spec-all-errors-at-once` | a spec with three different errors reports all three plus a count line, in one run | D-33 | no JVM | stderr+exit |
 | `spec-error-format` | every message has the shape `komar: <file>:<line>:<col>: <message>`, lowercase, with no trailing period | D-33 | no JVM | stderr+exit |
-| `spec-output-untouched` | with an existing `out.jsonl`, an invalid spec leaves it byte-identical | D-33, D-32 | no JVM | stderr+exit; `-o` file unchanged |
+| `spec-output-untouched` | with an existing `out.jsonl` and `out.view`, an invalid spec leaves both byte-identical | D-33, D-32 | no JVM | stderr+exit; `-o` files unchanged |
 | `spec-nothing-started-launch` | an invalid spec with `-- java Main` never starts the program (the program would create a marker file; none exists) | D-33 | no JVM | stderr+exit |
 | `spec-nothing-attached` | an invalid spec with `-p <pid>` of a running target does not attach: the target's stdout and stderr are unchanged and later calls produce no records | D-33 | attach | stderr+exit |
 | `spec-missing-id` | a probe without `id` is an error (reading) | D-33 | no JVM | stderr+exit |

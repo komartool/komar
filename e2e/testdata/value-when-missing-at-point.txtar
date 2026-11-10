@@ -1,6 +1,6 @@
 # a when using a value missing at a point warns before launch and never fires there; other points still fire
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 stderr 'komar: warning: spec.yaml:4:11: probe "nulls": when uses ret, not available at entry; entry will never fire'
 stderr 'komar: warning: spec.yaml:8:11: probe "slow": when uses duration, not available at entry; entry will never fire'
 stderr 'komar: warning: spec.yaml:12:11: probe "errs": when uses exception, not available at exit; exit will never fire'

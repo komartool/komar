@@ -1,0 +1,45 @@
+# -o names the output without an extension, -f picks the formats (jsonl and view by default); a .jsonl or .view suffix on -o is dropped
+exec javac --release 8 -Xlint:-options -d classes Main.java
+
+exec komar run spec.yaml -o both -- java -cp classes Main
+exists both.jsonl
+exists both.view
+! exists both
+
+exec komar run spec.yaml -o dump -f jsonl -- java -cp classes Main
+exists dump.jsonl
+! exists dump.view
+
+exec komar run spec.yaml -o view -f view -- java -cp classes Main
+exists view.view
+! exists view.jsonl
+grep '^Main.work\(int\)  args=\(1\)$' view.view
+
+exec komar run spec.yaml -o legacy.jsonl -- java -cp classes Main
+exists legacy.jsonl
+exists legacy.view
+! exists legacy.jsonl.jsonl
+
+exec komar run spec.yaml -o named.view -f view -- java -cp classes Main
+exists named.view
+! exists named.view.view
+
+exec komar run spec.yaml -o 'dotted.run' -- java -cp classes Main
+exists dotted.run.jsonl
+exists dotted.run.view
+
+-- Main.java --
+public class Main {
+    static int work(int x) {
+        return x + 1;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(work(1));
+    }
+}
+-- spec.yaml --
+probes:
+  - id: work
+    where: { class: Main, method: work }
+    what: [args, ret]

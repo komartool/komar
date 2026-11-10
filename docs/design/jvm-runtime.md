@@ -89,7 +89,7 @@ anchoring it alone.
 ## Launch path
 
 ```text
-komar run spec.yaml -o out.jsonl -- java -jar app.jar
+komar run spec.yaml -o out -- java -jar app.jar
 ```
 
 1. The CLI validates the spec (see [lifecycle-and-failures.md](lifecycle-and-failures.md#spec-errors)).
@@ -124,7 +124,7 @@ dynamic-loading warning.
 ## Attach path (D-37)
 
 ```text
-komar run spec.yaml -o out.jsonl -p 4242
+komar run spec.yaml -o out -p 4242
 ```
 
 The CLI implements the HotSpot POSIX attach handshake in Go, following the design of jattach

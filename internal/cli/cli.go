@@ -37,13 +37,14 @@ const (
 type runArgs struct {
 	spec    string
 	out     string
+	formats formats
 	program []string
 }
 
 func Main(args []string, stderr io.Writer) int {
 	ra, err := parse(args)
 	if err != nil {
-		say(stderr, "komar: %v\nusage: komar run <spec.yaml> -o <out.jsonl> -- <program> [args...]\n", err)
+		say(stderr, "komar: %v\nusage: komar run <spec.yaml> -o <name> [-f jsonl,view] -- <program> [args...]\n", err)
 		return exitUsage
 	}
 	s, err := load(ra.spec)
@@ -85,26 +86,41 @@ func parse(args []string) (runArgs, error) {
 	if len(args) == 0 || args[0] != "run" {
 		return runArgs{}, errors.New(`expected command "run"`)
 	}
-	var ra runArgs
+	ra := runArgs{formats: allFormats}
 	rest := args[1:]
 	for len(rest) > 0 {
 		arg := rest[0]
 		rest = rest[1:]
+		var err error
 		switch {
 		case arg == "--":
 			ra.program, rest = rest, nil
 		case arg == "-o":
-			if len(rest) == 0 {
-				return runArgs{}, errors.New("-o needs a path")
+			ra.out, rest, err = value(rest, "-o needs a path")
+			ra.out = outputBase(ra.out)
+		case arg == "-f":
+			var list string
+			list, rest, err = value(rest, "-f needs a list of formats")
+			if err == nil {
+				ra.formats, err = parseFormats(list)
 			}
-			ra.out, rest = rest[0], rest[1:]
 		case ra.spec == "" && len(arg) > 0 && arg[0] != '-':
 			ra.spec = arg
 		default:
-			return runArgs{}, fmt.Errorf("unexpected argument %q", arg)
+			err = fmt.Errorf("unexpected argument %q", arg)
+		}
+		if err != nil {
+			return runArgs{}, err
 		}
 	}
 	return ra, validate(ra)
+}
+
+func value(rest []string, missing string) (string, []string, error) {
+	if len(rest) == 0 || rest[0] == "--" {
+		return "", rest, errors.New(missing)
+	}
+	return rest[0], rest[1:], nil
 }
 
 func validate(ra runArgs) error {
@@ -112,7 +128,7 @@ func validate(ra runArgs) error {
 	case ra.spec == "":
 		return errors.New("missing spec file")
 	case ra.out == "":
-		return errors.New("missing -o <out.jsonl>")
+		return errors.New("missing -o <name>")
 	case len(ra.program) == 0:
 		return errors.New("missing program after --")
 	}
@@ -137,7 +153,15 @@ func reportSpecError(stderr io.Writer, err error) int {
 }
 
 func run(ra runArgs, s *spec.Spec, stderr io.Writer) int {
-	out, err := writer.Create(ra.out)
+	dump, err := dumpPath(ra)
+	if err != nil {
+		say(stderr, "komar: %v\n", err)
+		return exitStart
+	}
+	if !ra.formats.jsonl {
+		defer func() { _ = os.Remove(dump) }()
+	}
+	out, err := writer.Create(dump)
 	if err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitStart
@@ -147,8 +171,10 @@ func run(ra runArgs, s *spec.Spec, stderr io.Writer) int {
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
 	}
-	if err := compact.Write(ra.out, compact.PathFor(ra.out), probeIDs(s)); err != nil {
-		say(stderr, "komar: warning: %v\n", err)
+	if ra.formats.view {
+		if err := compact.Write(dump, ra.out+extView, probeIDs(s)); err != nil {
+			say(stderr, "komar: warning: %v\n", err)
+		}
 	}
 	return code
 }

@@ -1,11 +1,8 @@
-# komar run writes a compact view next to the dump: collaborator calls nested under the target, shared values labelled once, identical executions folded
+# komar run writes a compact view next to the dump by default: collaborator calls nested under the target, shared values labelled once, identical executions folded
 exec javac --release 8 -Xlint:-options -g -parameters -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
-exists out.komar
-cmp out.komar expected.komar
-
-exec komar run spec.yaml -o view.txt -- java -cp classes Main
-exists view.komar
+exec komar run spec.yaml -o out -- java -cp classes Main
+exists out.view
+cmp out.view expected.view
 
 -- Main.java --
 import java.util.HashMap;
@@ -67,7 +64,7 @@ probes:
   - id: repo
     where: { class: Main, method: discount, call: { class: 'Main$Repo', method: tier } }
     what: [call.args, ret]
--- expected.komar --
+-- expected.view --
 # → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
 end: reason=exit code=0
 hits: discount@entry 4, repo@before 4, repo@after 4, discount@exit 3, discount@exception 1

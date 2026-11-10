@@ -1,7 +1,7 @@
 # a class whose supertype is missing from the class path can never load, so subtype matching skips it with one info summary instead of an error per class, and other probes still work
 exec javac --release 8 -Xlint:-options -d classes Main.java Base.java Missing.java Orphan.java
 rm classes/Missing.class
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 stdout '^orphan unavailable$'
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl

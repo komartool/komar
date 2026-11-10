@@ -593,8 +593,8 @@ probes:
 Run it at launch or against a running JVM:
 
 ```text
-komar run spec.yaml -o out.jsonl -- java -jar app.jar
-komar run spec.yaml -o out.jsonl -p 4242
+komar run spec.yaml -o out -- java -jar app.jar
+komar run spec.yaml -o out -p 4242
 ```
 
 ---
@@ -627,7 +627,7 @@ questions.
 | misspelled `vars` name | `vars.ordr.total` | accepted at check time; reported when the probe is placed, then treated as missing | D-19 |
 
 ```text
-$ komar run spec.yaml -o out.jsonl -- java -jar app.jar
+$ komar run spec.yaml -o out -- java -jar app.jar
 komar: spec.yaml:12:11: unknown key "wher" (did you mean "where"?)
 komar: spec.yaml:17:7: at is not allowed on a line probe (probe "loop")
 komar: spec.yaml:24:9: what: method call "getTotal()" requires "calls: true" at the top of the spec

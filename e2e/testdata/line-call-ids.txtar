@@ -1,6 +1,6 @@
 # lambda bodies and anonymous class methods each get their own call id whose parent is the enclosing call, also when the lambda runs later on another thread
 exec javac --release 8 -Xlint:-options -g -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

@@ -3,7 +3,7 @@ exec javac --release 8 -Xlint:-options -g -d classes Main.java
 ! exec java -cp classes Main
 cp stdout base.out
 cp stderr base.err
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 cmp stdout base.out
 cp stderr run.err
 drop-lines '^(Picked up JAVA_TOOL_OPTIONS|komar: )' run.err filtered.err

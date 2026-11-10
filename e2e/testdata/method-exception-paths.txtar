@@ -2,7 +2,7 @@
 exec javac --release 8 -Xlint:-options -d classes Main.java
 exec java -cp classes Main
 cp stdout base.txt
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 cmp stdout base.txt
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl

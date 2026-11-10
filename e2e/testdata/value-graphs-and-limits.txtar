@@ -1,6 +1,6 @@
 # cycles and shared objects use @id/@ref; depth, items, string and fields limits mark what was cut; spec-wide and per-probe limits merge per key
 exec javac --release 8 -Xlint:-options -d classes Main.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
+exec komar run spec.yaml -o out -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
 

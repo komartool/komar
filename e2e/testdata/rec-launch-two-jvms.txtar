@@ -1,6 +1,6 @@
 # every JVM in the launched process tree loads the agent and reports to one file
 exec javac --release 8 -Xlint:-options -d classes Parent.java Child.java
-exec komar run spec.yaml -o out.jsonl -- java -cp classes Parent
+exec komar run spec.yaml -o out -- java -cp classes Parent
 stdout '^child done$'
 jsonl-norm out.jsonl got.jsonl
 cmp got.jsonl expected.jsonl
