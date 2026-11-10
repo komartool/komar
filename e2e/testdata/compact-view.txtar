@@ -74,9 +74,9 @@ end: reason=exit code=0
 executions: 4, distinct: 2
 
 Main.discount(Order)  args=(Order#1{id: 1, customer: "ann-the-long-customer-name"})   ×3
-  → ?(Order#1) ⇒ "gold"
+  → Repo.tier(Order#1) ⇒ "gold"
   ⇒ 0.1
 
 Main.discount(Order)  args=(Order#2{id: 2, customer: "bob-the-long-customer-name"})
-  → ?(Order#2) ⇒ null
+  → Repo.tier(Order#2) ⇒ null
   ⇒ threw  exception.message="unknown bob-the-long-customer-name"

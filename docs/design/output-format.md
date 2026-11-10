@@ -96,6 +96,7 @@ spec appears under `"what"` in the record.
 | `probe` | the probe `id` from the spec | D-5 |
 | `point` | `entry`, `exit`, `exception`, `line`, `before`, `after` | D-5, D-8, D-9 |
 | `method` | the method that **actually ran**: the specific overload when `params` was left out, or the lambda body / anonymous-class method when a line or call-site probe covers it | D-7, D-12 |
+| `callee` | call-site records only: the method the call instruction names, e.g. `com.shop.Repo.findById(long)`; for interface and virtual calls this is the declared method, the run-time class is in `call.target` | D-9 |
 | `call` | id of the invocation this record belongs to | D-21 |
 | `parent` | `call` of the nearest enclosing probed invocation on the same thread, or `null` | D-21 |
 | `thread` | `{ "id": ..., "name": ... }` of the thread that fired | D-21 |

@@ -4,6 +4,7 @@ type hit struct {
 	probe  string
 	point  string
 	method string
+	callee string
 	line   string
 	what   *object
 }
@@ -46,6 +47,7 @@ func toHit(r *object) *hit {
 		probe:  r.text("probe"),
 		point:  r.text("point"),
 		method: r.text("method"),
+		callee: r.text("callee"),
 		line:   r.text("line"),
 		what:   w,
 	}

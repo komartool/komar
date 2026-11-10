@@ -68,7 +68,7 @@ final class Engine {
             return 0L;
         }
         Event before = new Event(Points.BEFORE, stack.top(), stack.parentOfTop(), self, args)
-                .withLocals(point.locals(locals)).calling(target, callArgs);
+                .withLocals(point.locals(locals)).calling(point.callee(), target, callArgs);
         emit(stack, point.site(), before, probes);
         long token = tokens.incrementAndGet();
         stack.pushPending(new Pending(token, before, probes, point, System.nanoTime()));

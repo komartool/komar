@@ -127,9 +127,8 @@ func fold(lines []string) []string {
 
 func shortMethod(m string) string {
 	name, args, _ := strings.Cut(m, "(")
-	parts := strings.Split(name, ".")
-	if len(parts) >= 2 {
-		name = parts[len(parts)-2] + "." + parts[len(parts)-1]
+	if dot := strings.LastIndexByte(name, '.'); dot >= 0 {
+		name = shortType(name[:dot]) + name[dot:]
 	}
 	return name + "(" + args
 }

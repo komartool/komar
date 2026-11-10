@@ -65,12 +65,12 @@ probes:
 {"kind":"diag","level":"info","probe":"send","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"roles","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"void","msg":"placed","class":"Main","methods":1,"pid":1}
-{"kind":"hit","probe":"void","point":"after","method":"Main.charge(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["a"]}}
-{"kind":"hit","probe":"send","point":"before","method":"Main.charge(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["a",1]}}
-{"kind":"hit","probe":"roles","point":"before","method":"Main.charge(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"caller":"billing","receiver":"gw","program_call":"a"}}
-{"kind":"hit","probe":"send","point":"after","method":"Main.charge(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["a",1],"ret":"a1","duration":"<duration>"}}
-{"kind":"hit","probe":"void","point":"after","method":"Main.charge(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["b"]}}
-{"kind":"hit","probe":"send","point":"before","method":"Main.charge(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["b",-1]}}
-{"kind":"hit","probe":"roles","point":"before","method":"Main.charge(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"caller":"billing","receiver":"gw","program_call":"b"}}
-{"kind":"hit","probe":"send","point":"exception","method":"Main.charge(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["b",-1],"err":"negative -1","duration":"<duration>"}}
+{"kind":"hit","probe":"void","point":"after","method":"Main.charge(String, int)","callee":"Main$Gateway.log(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["a"]}}
+{"kind":"hit","probe":"send","point":"before","method":"Main.charge(String, int)","callee":"Main$Gateway.send(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["a",1]}}
+{"kind":"hit","probe":"roles","point":"before","method":"Main.charge(String, int)","callee":"Main$Gateway.send(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"caller":"billing","receiver":"gw","program_call":"a"}}
+{"kind":"hit","probe":"send","point":"after","method":"Main.charge(String, int)","callee":"Main$Gateway.send(String, int)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["a",1],"ret":"a1","duration":"<duration>"}}
+{"kind":"hit","probe":"void","point":"after","method":"Main.charge(String, int)","callee":"Main$Gateway.log(String)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["b"]}}
+{"kind":"hit","probe":"send","point":"before","method":"Main.charge(String, int)","callee":"Main$Gateway.send(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["b",-1]}}
+{"kind":"hit","probe":"roles","point":"before","method":"Main.charge(String, int)","callee":"Main$Gateway.send(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"caller":"billing","receiver":"gw","program_call":"b"}}
+{"kind":"hit","probe":"send","point":"exception","method":"Main.charge(String, int)","callee":"Main$Gateway.send(String, int)","call":2,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"call.args":["b",-1],"err":"negative -1","duration":"<duration>"}}
 {"kind":"end","reason":"exit","code":0,"hits":{"roles":2,"send":4,"void":2},"dropped":0,"when_errors":{}}

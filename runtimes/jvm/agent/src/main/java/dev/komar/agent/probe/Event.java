@@ -16,6 +16,7 @@ final class Event {
     private int line;
     private Map<String, Object> locals;
     private boolean callSite;
+    private String callee;
     private Object target;
     private Object[] callArgs;
 
@@ -53,15 +54,16 @@ final class Event {
         return this;
     }
 
-    Event calling(Object receiver, Object[] values) {
+    Event calling(String method, Object receiver, Object[] values) {
         this.callSite = true;
+        this.callee = method;
         this.target = receiver;
         this.callArgs = values;
         return this;
     }
 
     Event next(String nextPoint) {
-        return new Event(nextPoint, call, parent, self, args).withLocals(locals).calling(target, callArgs);
+        return new Event(nextPoint, call, parent, self, args).withLocals(locals).calling(callee, target, callArgs);
     }
 
     String point() {
@@ -110,6 +112,10 @@ final class Event {
 
     boolean isCallSite() {
         return callSite;
+    }
+
+    String callee() {
+        return callee;
     }
 
     Object target() {

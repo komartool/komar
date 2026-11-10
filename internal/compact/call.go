@@ -76,7 +76,7 @@ func (v *callView) step(i int) int {
 	case "before":
 		return v.onBefore(i)
 	case "after":
-		v.emit(v.pad + "  → " + v.callSite(e.hit, nil, ""))
+		v.emit(v.pad + "  → " + v.callSite(e.hit, nil))
 	default:
 		v.emit(withRest(v.pad+"  L"+e.hit.line, v.r.keys(e.hit.what, nil, nil)))
 	}
@@ -118,18 +118,14 @@ func (v *callView) onBefore(i int) int {
 	evs := v.c.events
 	before := evs[i].hit
 	j := i + 1
-	callee := ""
 	for j < len(evs) && evs[j].child != nil {
-		if callee == "" {
-			callee = methodName(evs[j].child.method)
-		}
 		j++
 	}
 	var after *hit
-	if j < len(evs) && isOutcome(evs[j].hit, before.probe) {
+	if j < len(evs) && isOutcome(evs[j].hit, before) {
 		after = evs[j].hit
 	}
-	v.emit(v.pad + "  → " + v.callSite(before, after, callee))
+	v.emit(v.pad + "  → " + v.callSite(before, after))
 	for k := i + 1; k < j; k++ {
 		v.r.call(evs[k].child, v.depth+1, true)
 	}
@@ -139,9 +135,9 @@ func (v *callView) onBefore(i int) int {
 	return j
 }
 
-func (v *callView) callSite(first, after *hit, callee string) string {
+func (v *callView) callSite(first, after *hit) string {
 	f := v.r.f
-	s := callName(f, first.what, callee) + "("
+	s := methodName(first.callee) + "("
 	if args, ok := first.what.get("call.args"); ok {
 		s += v.r.args(args)
 	}
@@ -161,16 +157,6 @@ func (v *callView) callSite(first, after *hit, callee string) string {
 	return withRest(s, rest)
 }
 
-func callName(f *formatter, what *object, callee string) string {
-	if callee != "" {
-		return callee
-	}
-	if target, ok := what.get("call.target"); ok {
-		return "[" + f.value(target) + "].?"
-	}
-	return "?"
-}
-
 func outcome(f *formatter, h *hit) string {
 	if h.point == "exception" {
 		if exc, ok := h.what.get("exception"); ok {
@@ -184,8 +170,8 @@ func outcome(f *formatter, h *hit) string {
 	return "ok"
 }
 
-func isOutcome(h *hit, probe string) bool {
-	return h != nil && h.probe == probe && (h.point == "after" || h.point == "exception")
+func isOutcome(h *hit, before *hit) bool {
+	return h != nil && h.probe == before.probe && h.callee == before.callee && (h.point == "after" || h.point == "exception")
 }
 
 func withRest(line, rest string) string {
