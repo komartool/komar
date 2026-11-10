@@ -25,6 +25,7 @@ components:
   launch: { in: internal/launch }
   server: { in: internal/server }
   writer: { in: internal/writer }
+  compact: { in: internal/compact }
   runtime-jvm: { in: internal/runtime/jvm }
   e2e: { in: e2e/** }
   bench: { in: bench/** }
@@ -33,7 +34,7 @@ deps:
   main:
     mayDependOn: [cli]
   cli:
-    mayDependOn: [spec, celcheck, launch, server, writer, runtime-jvm]
+    mayDependOn: [spec, celcheck, launch, server, writer, compact, runtime-jvm]
   spec:
     canUse: [yaml]
   celcheck:

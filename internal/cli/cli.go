@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mxprshn/komar/internal/celcheck"
+	"github.com/mxprshn/komar/internal/compact"
 	"github.com/mxprshn/komar/internal/launch"
 	"github.com/mxprshn/komar/internal/runtime/jvm"
 	"github.com/mxprshn/komar/internal/server"
@@ -145,6 +146,9 @@ func run(ra runArgs, s *spec.Spec, stderr io.Writer) int {
 	if err := out.Close(); err != nil {
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
+	}
+	if err := compact.Write(ra.out, compact.PathFor(ra.out)); err != nil {
+		say(stderr, "komar: warning: %v\n", err)
 	}
 	return code
 }
