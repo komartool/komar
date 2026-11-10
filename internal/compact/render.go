@@ -22,6 +22,10 @@ type group struct {
 }
 
 func Render(dump []byte, probes []string) string {
+	return render(dump, probes, defaultLayout)
+}
+
+func render(dump []byte, probes []string, lay layout) string {
 	recs := parseLines(dump)
 	var hits []*object
 	for _, r := range recs {
@@ -35,17 +39,11 @@ func Render(dump []byte, probes []string) string {
 	groups := distinct(roots)
 	lines = append(lines, "executions: "+strconv.Itoa(len(roots))+", distinct: "+strconv.Itoa(len(groups)))
 	r := &renderer{f: newFormatter(true, newNames())}
-	for _, g := range groups {
-		body := fold(r.render(g.root))
-		if g.count > 1 {
-			body[0] += "   ×" + strconv.Itoa(g.count)
-		}
-		lines = append(lines, "")
-		for _, line := range body {
-			lines = append(lines, wrapLine(line, maxWidth)...)
-		}
+	blocks := make([]block, len(groups))
+	for i, g := range groups {
+		blocks[i] = newBlock(fold(r.render(g.root)), g.count)
 	}
-	return strings.Join(lines, "\n") + "\n"
+	return strings.Join(append(lines, lay.body(lines, blocks)...), "\n") + "\n"
 }
 
 func distinct(roots []*call) []*group {
