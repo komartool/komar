@@ -16,12 +16,12 @@ func PathFor(dump string) string {
 	return strings.TrimSuffix(dump, filepath.Ext(dump)) + Ext
 }
 
-func Write(dump, out string) error {
+func Write(dump, out string, probes []string) error {
 	data, err := os.ReadFile(dump)
 	if err != nil {
 		return fmt.Errorf("read dump: %w", err)
 	}
-	if err := os.WriteFile(out, []byte(Render(parseLines(data))), 0o600); err != nil {
+	if err := os.WriteFile(out, []byte(Render(data, probes)), 0o600); err != nil {
 		return fmt.Errorf("write compact view: %w", err)
 	}
 	return nil

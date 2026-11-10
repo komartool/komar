@@ -147,10 +147,18 @@ func run(ra runArgs, s *spec.Spec, stderr io.Writer) int {
 		say(stderr, "komar: %v\n", err)
 		return exitFailure
 	}
-	if err := compact.Write(ra.out, compact.PathFor(ra.out)); err != nil {
+	if err := compact.Write(ra.out, compact.PathFor(ra.out), probeIDs(s)); err != nil {
 		say(stderr, "komar: warning: %v\n", err)
 	}
 	return code
+}
+
+func probeIDs(s *spec.Spec) []string {
+	ids := make([]string, len(s.Probes))
+	for i, p := range s.Probes {
+		ids[i] = p.ID
+	}
+	return ids
 }
 
 func session(ra runArgs, s *spec.Spec, out *writer.Writer, stderr io.Writer) int {

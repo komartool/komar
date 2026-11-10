@@ -68,13 +68,13 @@ probes:
     where: { class: Main, method: discount, call: { class: 'Main$Repo', method: tier } }
     what: [call.args, ret]
 -- expected.komar --
-# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times
-hits: discount@entry 4, repo@before 4, repo@after 4, discount@exit 3, discount@exception 1
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
 end: reason=exit code=0
+hits: discount@entry 4, repo@before 4, repo@after 4, discount@exit 3, discount@exception 1
 executions: 4, distinct: 2
 
-Main.discount(Order)  args=(Order#1{id: 1, customer: "ann-the-long-customer-name"})   ×3
-  → Repo.tier(Order#1) ⇒ "gold"
+Main.discount(Order)  args=(Main$Order#1{id: 1, customer: "ann-the-long-customer-name"})   ×3
+  → Main$Repo.tier(Order#1) ⇒ "gold"
   ⇒ 0.1
 
 Main.discount(Order)  args=(Order#2{id: 2, customer: "bob-the-long-customer-name"})

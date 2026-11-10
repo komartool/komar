@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -19,6 +20,7 @@ import net.bytebuddy.description.method.ParameterDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.pool.TypePool;
 import net.bytebuddy.utility.JavaModule;
 
 public final class Placement {
@@ -28,6 +30,7 @@ public final class Placement {
     private final Engine engine;
     private final BodyVars bodyVars;
     private final Set<String> failedTypes = ConcurrentHashMap.newKeySet();
+    private final Map<String, String> unreadable = new ConcurrentSkipListMap<>();
 
     private Placement(SessionSpec spec, Recorder recorder) {
         this.recorder = recorder;
@@ -88,13 +91,24 @@ public final class Placement {
     }
 
     public void finish() {
+        if (!unreadable.isEmpty()) {
+            Map.Entry<String, String> first = unreadable.entrySet().iterator().next();
+            recorder.diag("info", null, "subtype matching skipped " + unreadable.size()
+                    + " classes whose supertypes could not be read, e.g. " + first.getKey()
+                    + " (" + first.getValue() + ")");
+        }
         engine.finish();
     }
 
     private boolean matchesAnyProbe(TypeDescription td) {
         boolean any = false;
-        for (ProbeRuntime p : probes) {
-            any |= p.matchesType(td);
+        try {
+            for (ProbeRuntime p : probes) {
+                any |= p.matchesType(td);
+            }
+        } catch (TypePool.Resolution.NoSuchTypeException e) {
+            unreadable.putIfAbsent(td.getName(), "missing " + e.getMessage().replaceFirst(".* for ", ""));
+            return false;
         }
         return any;
     }

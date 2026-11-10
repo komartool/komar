@@ -20,7 +20,7 @@ func (r *renderer) call(c *call, depth int, inline bool) {
 		i = v.step(i)
 	}
 	if !v.opened && !inline {
-		head := v.pad + shortMethod(c.method) + "  (no entry record)"
+		head := v.pad + r.f.names.method(c.method) + "  (no entry record)"
 		r.out = append(r.out[:start], append([]string{head}, r.out[start:]...)...)
 	}
 }
@@ -84,7 +84,7 @@ func (v *callView) step(i int) int {
 }
 
 func (v *callView) onEntry(h *hit) {
-	line := v.pad + shortMethod(v.c.method)
+	line := v.pad + v.r.f.names.method(v.c.method)
 	if v.opened {
 		line = v.pad + "(entry again)"
 	}
@@ -137,7 +137,7 @@ func (v *callView) onBefore(i int) int {
 
 func (v *callView) callSite(first, after *hit) string {
 	f := v.r.f
-	s := methodName(first.callee) + "("
+	s := f.names.callName(first.callee) + "("
 	if args, ok := first.what.get("call.args"); ok {
 		s += v.r.args(args)
 	}

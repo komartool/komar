@@ -16,6 +16,7 @@ var plainKey = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$.]*$`)
 
 type formatter struct {
 	share  bool
+	names  *names
 	labels map[string]int
 	last   map[string]recent
 }
@@ -25,8 +26,8 @@ type recent struct {
 	key    string
 }
 
-func newFormatter(share bool) *formatter {
-	return &formatter{share: share, labels: map[string]int{}, last: map[string]recent{}}
+func newFormatter(share bool, n *names) *formatter {
+	return &formatter{share: share, names: n, labels: map[string]int{}, last: map[string]recent{}}
 }
 
 func (f *formatter) value(v any) string {
@@ -74,8 +75,12 @@ func (f *formatter) object(o *object) string {
 	if s, ok := f.marker(o); ok {
 		return s
 	}
-	typ := shortType(o.text("@type"))
-	if _, ok := o.get("@truncated"); ok {
+	if base, ok := proxyOf(o.text("@type")); ok {
+		return f.names.typ(base) + "{proxy}"
+	}
+	typ := f.names.typ(o.text("@type"))
+	cut, partial := o.get("@truncated")
+	if _, isList := cut.([]any); partial && !isList {
 		return typ + "{…}"
 	}
 	id := ""
@@ -86,7 +91,11 @@ func (f *formatter) object(o *object) string {
 	if len(fields.keys) == 0 {
 		return typ + id + "{}"
 	}
-	render := func() string { return "{" + f.members(fields) + "}" }
+	more := ""
+	if partial {
+		more = ", …"
+	}
+	render := func() string { return "{" + f.members(fields) + more + "}" }
 	if !f.share {
 		return typ + id + render()
 	}
@@ -97,7 +106,9 @@ func (f *formatter) object(o *object) string {
 	if n, ok := f.labels[key]; ok {
 		return typ + "#" + strconv.Itoa(n)
 	}
-	render = f.delta(o.text("@type"), key, fields, render)
+	if !partial {
+		render = f.delta(o.text("@type"), key, fields, render)
+	}
 	return typ + f.label(key) + id + render()
 }
 
@@ -193,16 +204,4 @@ func memberName(k string) string {
 		return k
 	}
 	return strconv.Quote(k)
-}
-
-func shortType(t string) string {
-	t = t[strings.LastIndexByte(t, '.')+1:]
-	i := strings.LastIndexByte(t, '$')
-	if i < 0 {
-		return t
-	}
-	if _, err := strconv.Atoi(t[i+1:]); err == nil {
-		return t
-	}
-	return t[i+1:]
 }

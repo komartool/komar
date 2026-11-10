@@ -7,7 +7,8 @@ import (
 
 const legend = "# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, " +
 	"#n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), " +
-	"^n reference within one captured value, ×N repeated N times"
+	"^n reference within one captured value, ×N repeated N times, " +
+	"types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock"
 
 var (
 	entryKeys   = []string{"this", "args"}
@@ -20,7 +21,8 @@ type group struct {
 	count int
 }
 
-func Render(recs []*object) string {
+func Render(dump []byte, probes []string) string {
+	recs := parseLines(dump)
 	var hits []*object
 	for _, r := range recs {
 		if r.text("kind") == "hit" {
@@ -28,11 +30,11 @@ func Render(recs []*object) string {
 		}
 	}
 	lines := []string{legend}
-	lines = append(lines, summary(recs, hits)...)
+	lines = append(lines, summary(recs, hits, probes)...)
 	roots := build(hits)
 	groups := distinct(roots)
 	lines = append(lines, "executions: "+strconv.Itoa(len(roots))+", distinct: "+strconv.Itoa(len(groups)))
-	r := &renderer{f: newFormatter(true)}
+	r := &renderer{f: newFormatter(true, newNames())}
 	for _, g := range groups {
 		body := fold(r.render(g.root))
 		if g.count > 1 {
@@ -44,55 +46,8 @@ func Render(recs []*object) string {
 	return strings.Join(lines, "\n") + "\n"
 }
 
-func summary(recs, hits []*object) []string {
-	var order []string
-	counts := map[string]int{}
-	pids := map[string]bool{}
-	for _, h := range hits {
-		k := h.text("probe") + "@" + h.text("point")
-		if counts[k] == 0 {
-			order = append(order, k)
-		}
-		counts[k]++
-		pids[h.text("pid")] = true
-	}
-	parts := make([]string, len(order))
-	for i, k := range order {
-		parts[i] = k + " " + strconv.Itoa(counts[k])
-	}
-	head := "hits: " + strings.Join(parts, ", ")
-	if len(pids) > 1 {
-		head += "  jvms: " + strconv.Itoa(len(pids))
-	}
-	return append([]string{head}, notes(recs)...)
-}
-
-func notes(recs []*object) []string {
-	var out []string
-	for _, r := range recs {
-		switch {
-		case r.text("kind") == "end":
-			out = append(out, endLine(r))
-		case r.text("kind") == "diag" && r.text("level") != "info":
-			out = append(out, strings.TrimSpace(r.text("level")+": "+r.text("probe")+" "+r.text("msg")))
-		}
-	}
-	return out
-}
-
-func endLine(r *object) string {
-	s := "end: reason=" + r.text("reason")
-	if code := r.text("code"); code != "" {
-		s += " code=" + code
-	}
-	if d := r.text("dropped"); d != "" && d != "0" {
-		s += " dropped=" + d
-	}
-	return s
-}
-
 func distinct(roots []*call) []*group {
-	canon := &renderer{f: newFormatter(false)}
+	canon := &renderer{f: newFormatter(false, nil)}
 	byText := map[string]*group{}
 	var groups []*group
 	for _, c := range roots {
@@ -123,19 +78,6 @@ func fold(lines []string) []string {
 		i += n
 	}
 	return out
-}
-
-func shortMethod(m string) string {
-	name, args, _ := strings.Cut(m, "(")
-	if dot := strings.LastIndexByte(name, '.'); dot >= 0 {
-		name = shortType(name[:dot]) + name[dot:]
-	}
-	return name + "(" + args
-}
-
-func methodName(m string) string {
-	name, _, _ := strings.Cut(shortMethod(m), "(")
-	return name
 }
 
 func contains(list []string, s string) bool {

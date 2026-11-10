@@ -1,4 +1,4 @@
-# the call target matches the receiver's run-time class: exact class only, subtypes for any implementation, a base class misses its subclass, an interface without subtypes warns and never fires
+# the call target matches the receiver's run-time class: exact class only, subtypes for any implementation, a base class misses its subclass; an interface or abstract class can never be the run-time class, so without subtypes it covers its implementations
 exec javac --release 8 -Xlint:-options -d classes Main.java
 exec komar run spec.yaml -o out.jsonl -- java -cp classes Main
 jsonl-norm out.jsonl got.jsonl
@@ -35,15 +35,26 @@ public class Main {
         }
     }
 
-    static void pay(Gateway[] gateways, Base b) {
+    abstract static class Shape {
+        abstract int area();
+    }
+
+    static class Square extends Shape {
+        int area() {
+            return 4;
+        }
+    }
+
+    static void pay(Gateway[] gateways, Base b, Shape s) {
         for (Gateway g : gateways) {
             g.send("x");
         }
         b.size();
+        s.area();
     }
 
     public static void main(String[] args) {
-        pay(new Gateway[] {new Stripe(), new Paypal(), new Stripe()}, new Sub());
+        pay(new Gateway[] {new Stripe(), new Paypal(), new Stripe()}, new Sub(), new Square());
     }
 }
 -- spec.yaml --
@@ -60,7 +71,11 @@ probes:
     where: { class: Main, method: pay, call: { class: 'Main$Base', subtypes: true, method: size }, at: [after] }
     what: [ret]
   - id: interface_only
-    where: { class: Main, method: pay, call: { class: 'Main$Gateway', method: send } }
+    where: { class: Main, method: pay, call: { class: 'Main$Gateway', method: send }, at: [after] }
+    what: [ret]
+  - id: abstract_only
+    where: { class: Main, method: pay, call: { class: 'Main$Shape', method: area }, at: [after] }
+    what: [ret]
 -- expected.jsonl --
 {"kind":"run","format":1,"komar":"<masked>","spec":"spec.yaml","cmd":["java","-cp","classes","Main"],"start":"<masked>"}
 {"kind":"diag","level":"info","msg":"agent started","jvm":"<masked>","pid":1}
@@ -69,11 +84,15 @@ probes:
 {"kind":"diag","level":"info","probe":"base_exact","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"base_subtypes","msg":"placed","class":"Main","methods":1,"pid":1}
 {"kind":"diag","level":"info","probe":"interface_only","msg":"placed","class":"Main","methods":1,"pid":1}
-{"kind":"hit","probe":"stripe_only","point":"after","method":"Main.pay(Gateway[], Base)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
-{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
-{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"paypal"}}
-{"kind":"hit","probe":"stripe_only","point":"after","method":"Main.pay(Gateway[], Base)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
-{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
-{"kind":"hit","probe":"base_subtypes","point":"after","method":"Main.pay(Gateway[], Base)","callee":"Main$Base.size()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
-{"kind":"diag","level":"warn","probe":"interface_only","msg":"call target Main$Gateway is an interface and can never be the run-time class of the receiver; use subtypes: true","pid":1}
-{"kind":"end","reason":"exit","code":0,"hits":{"any_gateway":3,"base_subtypes":1,"stripe_only":2},"dropped":0,"when_errors":{}}
+{"kind":"diag","level":"info","probe":"abstract_only","msg":"placed","class":"Main","methods":1,"pid":1}
+{"kind":"hit","probe":"stripe_only","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"interface_only","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"paypal"}}
+{"kind":"hit","probe":"interface_only","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"paypal"}}
+{"kind":"hit","probe":"stripe_only","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"any_gateway","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"interface_only","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Gateway.send(String)","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":"stripe"}}
+{"kind":"hit","probe":"base_subtypes","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Base.size()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":2}}
+{"kind":"hit","probe":"abstract_only","point":"after","method":"Main.pay(Gateway[], Base, Shape)","callee":"Main$Shape.area()","call":1,"parent":null,"thread":{"id":1,"name":"main"},"pid":1,"ts":"<masked>","what":{"ret":4}}
+{"kind":"end","reason":"exit","code":0,"hits":{"abstract_only":1,"any_gateway":3,"base_subtypes":1,"interface_only":3,"stripe_only":2},"dropped":0,"when_errors":{}}
