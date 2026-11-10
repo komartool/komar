@@ -1,0 +1,31 @@
+A view over the size limit starts with a table of contents; the limits are lowered here to 1 line and 2 entries.
+-- probes --
+p
+-- layout --
+1 2
+-- dump.jsonl --
+{"kind":"hit","probe":"p","point":"entry","method":"Svc.run(int)","call":1,"parent":null,"pid":1,"what":{"args":[1]}}
+{"kind":"hit","probe":"p","point":"exit","method":"Svc.run(int)","call":1,"parent":null,"pid":1,"what":{"ret":10}}
+{"kind":"hit","probe":"p","point":"entry","method":"Svc.run(int)","call":2,"parent":null,"pid":1,"what":{"args":[2]}}
+{"kind":"hit","probe":"p","point":"exit","method":"Svc.run(int)","call":2,"parent":null,"pid":1,"what":{"ret":20}}
+{"kind":"hit","probe":"p","point":"entry","method":"Svc.run(int)","call":3,"parent":null,"pid":1,"what":{"args":[3]}}
+{"kind":"hit","probe":"p","point":"exit","method":"Svc.run(int)","call":3,"parent":null,"pid":1,"what":{"ret":30}}
+{"kind":"end","reason":"exit","code":0}
+-- want.view --
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
+end: reason=exit code=0
+hits: p@entry 3, p@exit 3
+executions: 3, distinct: 3
+contents (line numbers in this file):
+  [1] L9 Svc.run(int)  args=(1) ⇒ 10
+  [2] L12 Svc.run(int)  args=(2) ⇒ 20
+  … 1 more, lines 15–17
+[1]
+Svc.run(int)  args=(1)
+  ⇒ 10
+[2]
+Svc.run(int)  args=(2)
+  ⇒ 20
+[3]
+Svc.run(int)  args=(3)
+  ⇒ 30

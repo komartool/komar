@@ -1,0 +1,22 @@
+A type is named in full on first use and whenever its simple name belongs to another type.
+-- probes --
+p
+-- dump.jsonl --
+{"kind":"hit","probe":"p","point":"entry","method":"com.shop.Svc.put(Item)","call":1,"parent":null,"pid":1,"what":{"args":[{"@type":"com.a.Item","id":1}]}}
+{"kind":"hit","probe":"p","point":"entry","method":"com.shop.Svc.put(Item)","call":2,"parent":null,"pid":1,"what":{"args":[{"@type":"com.b.Item","id":2}]}}
+{"kind":"hit","probe":"p","point":"entry","method":"com.shop.Svc.put(Item)","call":3,"parent":null,"pid":1,"what":{"args":[{"@type":"com.a.Item","id":3}]}}
+{"kind":"hit","probe":"p","point":"entry","method":"com.shop.Svc.put(Item)","call":4,"parent":null,"pid":1,"what":{"args":[{"@type":"com.b.Item","id":4}]}}
+{"kind":"end","reason":"exit","code":0}
+-- want.view --
+# → call made by the method above, ⇒ outcome, Type#n{…} first occurrence of a value, #n the same value again, =#n+{f: v} like #n except these fields (∅ = gone), ^n reference within one captured value, ×N repeated N times, types are named in full on first use, {…} fields cut by limits, {proxy} a generated proxy or mock
+end: reason=exit code=0
+hits: p@entry 4
+executions: 4, distinct: 4
+
+com.shop.Svc.put(Item)  args=(com.a.Item{id: 1})
+
+Svc.put(Item)  args=(com.b.Item{id: 2})
+
+Svc.put(Item)  args=(Item{id: 3})
+
+Svc.put(Item)  args=(com.b.Item{id: 4})
